@@ -228,10 +228,11 @@ async function loadOpenMeteo(p){
     get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=sea_surface_temperature`).catch(()=>null)
   ]);
   const CV=["swell_wave_height","swell_wave_period","swell_wave_direction","wind_wave_height","wind_wave_period","wind_wave_direction"],CV2=["secondary_swell_wave_height","secondary_swell_wave_period","secondary_swell_wave_direction"];
-  let c=await get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&models=ecmwf_wam025&hourly=${CV.concat(CV2).join(",")}`).catch(()=>null);
-  if(!c)c=await get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&models=ecmwf_wam025&hourly=${CV.join(",")}`).catch(()=>null);
+  // ECMWF no publica los componentes en Open-Meteo: se toman del modelo combinado (Météo-France)
+  let c=await get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=${CV.concat(CV2).join(",")}`).catch(()=>null);
+  if(!c)c=await get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&models=meteofrance_wave&hourly=${CV.join(",")}`).catch(()=>null);
   let comp=null;
-  if(c&&c.hourly){const C=c.hourly,g=v=>C[v]||C[v+"_ecmwf_wam025"]||null;
+  if(c&&c.hourly){const C=c.hourly,g=v=>C[v]||C[v+"_meteofrance_wave"]||null;
     const mk=(p)=>{const h=g(p+"_height");return h&&h.some(x=>x!=null)?{h,t:g(p+"_period")||[],d:g(p+"_direction")||[]}:null};
     comp={sw:mk("swell_wave"),sw2:mk("secondary_swell_wave"),ww:mk("wind_wave")};if(!comp.sw&&!comp.ww)comp=null}
   const H=m.hourly,W=w.hourly,times=H.time,wave={},wind={};
@@ -486,7 +487,7 @@ function detail(D,idx){
   <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>Orilla</th>":""}<th></th></tr></thead><tbody>
   ${r.per.map(p=>`<tr${p.m===r.ref.m?' style="font-weight:600"':""}><td>${nameOf(p.m)}${p.m===r.ref.m?" (referencia)":""}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td>${playa?`<td>${Math.round(p.f*100)} %</td><td>${p.hb.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
   </tbody></table>
-  ${r.ref.comps?`<h3>Componentes del oleaje (ECMWF, como en Windy)</h3><table class="mt"><thead><tr><th></th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}</tr></thead><tbody>${r.ref.comps.map(c=>`<tr><td>${COMP_NOM[c.k]}</td><td>${c.h.toFixed(2)} m · ${(c.t||0).toFixed(1)} s · del ${card(c.d)}</td>${playa?`<td>${Math.round(c.f*100)} %</td><td>${c.e.toFixed(2)} m</td>`:""}</tr>`).join("")}</tbody></table>`:""}
+  ${r.ref.comps?`<h3>Componentes del oleaje (Météo-France)</h3><table class="mt"><thead><tr><th></th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}</tr></thead><tbody>${r.ref.comps.map(c=>`<tr><td>${COMP_NOM[c.k]}</td><td>${c.h.toFixed(2)} m · ${(c.t||0).toFixed(1)} s · del ${card(c.d)}</td>${playa?`<td>${Math.round(c.f*100)} %</td><td>${c.e.toFixed(2)} m</td>`:""}</tr>`).join("")}</tbody></table>`:""}
   <dl>
    <dt>Viento (${nameOf(r.wref.m)})</dt><dd>${vientoNombre(r.wref.d)} · ${Math.round(r.wref.w)} km/h del ${card(r.wref.d)}, rachas ${Math.round(r.wref.g||0)}</dd>
    ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.domD??r.ref.d,r.ref.comps&&r.ref.f?r.ref.h*r.ref.f/Math.max(0.05,exposure(r.ref.domD??r.ref.d,cur)):r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
