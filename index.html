@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrada desde playa · Costa Brava</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0E2A3A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calas">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--abyss:#0E2A3A;--posidonia:#2F5D50;--foam:#EEF4F2;--paper:#FFFFFF;--sand:#D8C7A1;--ink:#14232B;--muted:#5B6E74;--line:#C9D6D3;--go:#2E9E6A;--warn:#E0A526;--stop:#C9412F;--swell:#1F6FA8;--wind:#7A8A90;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--foam:#0B1D27;--paper:#112836;--ink:#E4EEEC;--muted:#93A7AC;--line:#22414F;--sand:#6E6247;--abyss:#081620;--swell:#5AA8DD;--wind:#A2B1B6}}
+:root[data-theme="dark"]{--foam:#0B1D27;--paper:#112836;--ink:#E4EEEC;--muted:#93A7AC;--line:#22414F;--sand:#6E6247;--abyss:#081620;--swell:#5AA8DD;--wind:#A2B1B6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--foam);color:var(--ink);font:400 15px/1.5 Barlow,"Segoe UI",Arial,sans-serif}
+header{background:var(--abyss);color:#EEF4F2;padding:18px 20px 0}
+h1{font:700 30px/1.05 "Barlow Condensed","Arial Narrow",sans-serif;margin:0 0 4px}
+.sub{color:#A9C2C6;margin:0 0 14px;font-size:14px}
+.tabs{display:flex;gap:4px;overflow-x:auto}
+.tabs button{font:600 16px "Barlow Condensed",sans-serif;background:transparent;color:#A9C2C6;border:0;padding:10px 14px;border-radius:8px 8px 0 0;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--foam);color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,.cell:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+main{max-width:1150px;margin:0 auto;padding:18px 20px 40px;display:grid;grid-template-columns:330px 1fr;gap:22px}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px}
+h2{font:600 20px/1.2 "Barlow Condensed",sans-serif;margin:0 0 10px}
+h3{font:600 16px "Barlow Condensed",sans-serif;margin:14px 0 6px}
+.compass{width:100%;max-width:290px;display:block;margin:0 auto}
+.ctl{margin:12px 0}.ctl label{display:flex;justify-content:space-between;font-weight:500;font-size:14px}.ctl label span{color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--posidonia)}
+input[type=text],input[type=password],input[type=date],input[type=number],select{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--foam);color:var(--ink)}
+.btn{font:600 15px "Barlow Condensed",sans-serif;background:var(--posidonia);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--posidonia);border:1px solid var(--posidonia)}
+.row{display:flex;gap:8px;align-items:end}.row>*{flex:1}
+.note{font-size:13px;color:var(--muted)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:8px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.grid-wrap{overflow-x:auto}
+table{border-collapse:separate;border-spacing:4px;width:100%}
+#grid{min-width:540px}
+th{font:600 14px "Barlow Condensed",sans-serif;color:var(--muted);text-align:left;padding:2px 4px}
+td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.cell{position:relative;border:0;width:100%;min-height:58px;border-radius:9px;color:#fff;font:600 17px "Barlow Condensed",sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.cell small{font:400 11px Barlow,sans-serif;opacity:.92}
+.cell.go{background:var(--go)}.cell.warn{background:var(--warn);color:#2A1E00}.cell.stop{background:var(--stop)}
+.cell.lowconf{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.22) 0 6px,transparent 6px 12px)}
+.cell .flag{position:absolute;top:3px;right:5px;font:700 10px Barlow,sans-serif}
+.cell[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.detail dl{display:grid;grid-template-columns:1fr auto;gap:4px 14px;margin:8px 0}.detail dt{color:var(--muted)}.detail dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
+.mt{font-size:13px;min-width:0}.mt td,.mt th{padding:3px 6px}.mt td{font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px}
+.reasons{margin:8px 0 0;padding-left:18px}
+.status{font-size:13px;color:var(--muted);margin:0 0 10px}
+.vis{display:inline-block;font-size:11px;background:var(--sand);color:var(--ink);border-radius:4px;padding:0 5px;margin-top:2px}
+.log li{font-size:13px;margin:2px 0}
+details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
+</style>
+</head>
+<body>
+<header>
+  <h1>¿Se puede entrar desde la playa?</h1>
+  <p class="sub">Consenso de 5 modelos de oleaje y 5 de viento, contrastado con AEMET y ajustado con tus propias inmersiones.</p>
+  <div class="tabs" role="tablist" id="tabs"></div>
+</header>
+<main>
+ <div>
+  <section class="panel" aria-labelledby="h-cala">
+    <h2 id="h-cala">Cala</h2>
+    <svg class="compass" id="compass" viewBox="-110 -110 220 220" role="img" aria-label="Rosa de los vientos con la apertura de la cala"></svg>
+    <div class="legend"><span><i style="background:var(--sand)"></i>Boca de la cala</span><span><i style="background:var(--swell)"></i>Oleaje</span><span><i style="background:var(--wind)"></i>Viento</span></div>
+    <div class="ctl"><label for="orient">Hacia dónde se abre <span id="v-orient"></span></label><input type="range" id="orient" min="0" max="359" step="5"></div>
+    <div class="ctl"><label for="aper">Apertura (± grados) <span id="v-aper"></span></label><input type="range" id="aper" min="10" max="90" step="5"></div>
+    <div class="ctl"><label for="tgo">Rompiente máx. en verde <span id="v-tgo"></span></label><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
+    <div class="ctl"><label for="twarn">Rompiente máx. en ámbar <span id="v-twarn"></span></label><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
+    <p class="note" id="kinfo"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-log">
+    <h2 id="h-log">Registrar inmersión</h2>
+    <p class="note">Anota cómo fue la entrada. Con 3 o más registros en una cala, la app ajusta sola cuánto oleaje le llega.</p>
+    <div class="row"><div><label class="note" for="lg-date">Día</label><input type="date" id="lg-date"></div><div><label class="note" for="lg-hour">Hora</label><input type="number" id="lg-hour" min="6" max="21" value="10"></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-out">Entrada</label><select id="lg-out"><option value="0">Fácil</option><option value="1">Con dificultad</option><option value="2">No entré / peligrosa</option></select></div><div><label class="note" for="lg-vis">Visibilidad (m)</label><input type="number" id="lg-vis" min="0" max="40" placeholder="opcional"></div></div>
+    <p style="margin:10px 0 0"><button class="btn" id="lg-save">Guardar registro</button></p>
+    <p class="note" id="lg-msg"></p>
+    <ul class="log" id="lg-list"></ul>
+    <p><button class="btn ghost" id="lg-export">Exportar registros</button> <label class="btn ghost" style="display:inline-block">Importar<input type="file" id="lg-import" accept=".json" hidden></label></p>
+  </section>
+
+  <section class="panel">
+    <details id="cfg">
+      <summary>Conexión y AEMET</summary>
+      <div class="ctl"><label for="aurl">Dirección del servidor</label><input type="text" id="aurl" autocomplete="off" placeholder="https://buceo-api.tuusuario.workers.dev"></div>
+      <div class="ctl"><label for="apin">PIN</label><input type="password" id="apin" autocomplete="off" inputmode="numeric" placeholder="El que guardaste en Cloudflare"></div>
+      <p><button class="btn" id="asave">Guardar y conectar</button></p>
+      <p class="note" id="aconn"></p>
+      <h3>Playa AEMET de esta cala</h3>
+      <div class="ctl"><label for="acode">Código de playa</label><input type="text" id="acode" inputmode="numeric" placeholder="p. ej. 1720207"></div>
+      <div class="row"><div><label class="note" for="amuni">Código de municipio (INE)</label><input type="text" id="amuni" inputmode="numeric"></div><div style="flex:0"><button class="btn ghost" id="afind">Buscar playas</button></div></div>
+      <p class="note" id="afound"></p>
+      <p><button class="btn ghost" id="acodesave">Guardar código</button></p>
+      <p class="note">La dirección y el PIN se guardan solo en este dispositivo. Los registros y los ajustes de las calas se comparten entre todos tus dispositivos a través del servidor.</p>
+    </details>
+  </section>
+ </div>
+
+ <div>
+  <section class="panel">
+    <h2>Próximos 7 días</h2>
+    <p class="status" id="status">Cargando previsiones…</p>
+    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Entrada factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Confianza baja</span><span><b>A!</b> AEMET discrepa</span></div>
+    <div class="grid-wrap"><table id="grid"></table></div>
+    <div class="detail" id="detail"></div>
+  </section>
+ </div>
+</main>
+<script>
+const HOURS=[8,11,14,17];
+const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
+const WIND_MODELS=[["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["ecmwf_ifs025","ECMWF"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
+const CALAS=[
+ {id:"tossa",name:"Tossa · Mar Menuda",lat:41.7215,lon:2.9405,orient:110,aper:45,aemet:"1720207",muni:"17202"},
+ {id:"sfg",name:"Sant Feliu · Port Salvi",lat:41.7765,lon:3.0400,orient:150,aper:40,aemet:"",muni:"17160"},
+ {id:"begur",name:"Begur · Sa Tuna",lat:41.9605,lon:3.2320,orient:105,aper:35,aemet:"",muni:"17013"}
+];
+
+// ---------- utilidades ----------
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const angDiff=(a,b)=>Math.abs(((a-b+540)%360)-180);
+const median=a=>{const s=a.filter(x=>x!=null&&!isNaN(x)).sort((x,y)=>x-y);if(!s.length)return null;const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2};
+const circMean=a=>{const v=a.filter(x=>x!=null);if(!v.length)return null;let x=0,y=0;v.forEach(d=>{x+=Math.cos(d*Math.PI/180);y+=Math.sin(d*Math.PI/180)});return (Math.atan2(y,x)*180/Math.PI+360)%360};
+const DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
+const card=d=>["N","NE","E","SE","S","SO","O","NO"][Math.round(d/45)%8];
+const LV=["go","warn","stop"],LVTXT=["Factible","Precaución","No recomendable"];
+const pick=(H,v,m)=>H[`${v}_${m}`]||null;
+
+// ---------- configuración persistente ----------
+let cfg=store.get("calas3-cfg",{});
+CALAS.forEach(c=>Object.assign(c,cfg[c.id]||{}));
+const th=Object.assign({go:0.5,warn:0.8},store.get("calas3-th",{}));
+let api=store.get("calas3-api",{url:"",pin:""});
+let logs=store.get("calas3-logs",[]);
+let pending=store.get("calas3-pending",[]);
+let serverOK=false;
+const API=()=>(api.url||"").replace(/\/+$/,"");
+async function srv(path,opt={}){
+  if(!API())throw new Error("sin servidor");
+  const r=await fetch(API()+path,{...opt,headers:{"Content-Type":"application/json","X-Pin":api.pin||"",...(opt.headers||{})}});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||("Error "+r.status));
+  return j;
+}
+const cfgObj=()=>{const o={calas:{},th};CALAS.forEach(c=>o.calas[c.id]={orient:c.orient,aper:c.aper,aemet:c.aemet,muni:c.muni});return o};
+let cfgTimer=null;
+const saveCfg=()=>{const o=cfgObj();store.set("calas3-cfg",o.calas);store.set("calas3-th",th);
+  clearTimeout(cfgTimer);cfgTimer=setTimeout(()=>{if(serverOK)srv("/config",{method:"PUT",body:JSON.stringify(o)}).catch(()=>{})},1500)};
+
+// ---------- datos ----------
+// Estructura por cala: {times:[iso], wave:{model:{h:[],t:[],d:[]}}, wind:{model:{w:[],g:[],d:[]}}, sst:[], precip:[], today:"YYYY-MM-DD", live:true}
+const DATA={};
+let aemetData={};
+
+async function loadOpenMeteo(c){
+  const base=`latitude=${c.lat}&longitude=${c.lon}&timezone=Europe%2FMadrid&past_days=3&forecast_days=7`;
+  const m=await fetch(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=wave_height,wave_period,wave_direction,sea_surface_temperature&models=${WAVE_MODELS.map(x=>x[0]).join(",")}`).then(r=>{if(!r.ok)throw new Error("marine");return r.json()});
+  const w=await fetch(`https://api.open-meteo.com/v1/forecast?${base}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&models=${WIND_MODELS.map(x=>x[0]).join(",")}`).then(r=>{if(!r.ok)throw new Error("wind");return r.json()});
+  const H=m.hourly,W=w.hourly,times=H.time;
+  const wave={},wind={};
+  WAVE_MODELS.forEach(([k])=>{const h=pick(H,"wave_height",k);if(h&&h.some(v=>v!=null))wave[k]={h,t:pick(H,"wave_period",k)||[],d:pick(H,"wave_direction",k)||[]}});
+  WIND_MODELS.forEach(([k])=>{const s=pick(W,"wind_speed_10m",k);if(s&&s.some(v=>v!=null))wind[k]={w:s,g:pick(W,"wind_gusts_10m",k)||[],d:pick(W,"wind_direction_10m",k)||[]}});
+  const sstKeys=Object.keys(H).filter(k=>k.startsWith("sea_surface_temperature"));
+  const sst=times.map((_,i)=>median(sstKeys.map(k=>H[k][i])));
+  const pKeys=Object.keys(W).filter(k=>k.startsWith("precipitation"));
+  const precip=W.time.map((_,i)=>median(pKeys.map(k=>W[k][i])));
+  return {times,wave,wind,sst,precip,today:times[72].slice(0,10),live:true};
+}
+function fromSnapshot(c){ // instantánea v1: un único modelo combinado
+  const s=SNAP[c.id],start=SNAP.start;const times=[],h=[],t=[],d=[],ww=[],gg=[],dd=[];
+  s.t.split(" ").forEach((p,i)=>{const v=p.split(".").map(Number);const day=Math.floor(i/4),hr=HOURS[i%4];const dt=new Date(start+"T12:00:00");dt.setDate(dt.getDate()+day);
+    times.push(dt.toISOString().slice(0,10)+"T"+String(hr).padStart(2,"0")+":00");
+    const hs=v[0]/100,hw=v[3]/100;h.push(Math.sqrt(hs*hs+hw*hw));t.push(hs>=hw?v[1]/10:v[4]/10);d.push(hs>=hw?v[2]:v[5]);ww.push(v[6]);gg.push(v[7]);dd.push(v[8])});
+  const rain=s.r.split(",").map(Number),sstD=s.sst.split(",").map(n=>n/10);
+  return {times,wave:{best:{h,t,d}},wind:{best:{w:ww,g:gg,d:dd}},sst:times.map((_,i)=>sstD[Math.floor(i/4)]),precipDaily:rain,today:start,live:false};
+}
+
+// AEMET: la API devuelve un enlace "datos" que hay que descargar (codificación ISO-8859-15)
+async function aemetPlaya(code){
+  const r=await fetch(`${API()}/aemet/playa/${code}`);const j=await r.json();
+  if(!r.ok)throw new Error(j.error||"AEMET "+r.status);return j;
+}
+const oleajeLvl=t=>!t?null:/fuerte|grueso/i.test(t)?2:/moderad/i.test(t)?1:/d[eé]bil|calma/i.test(t)?0:null;
+async function loadAemet(c){
+  if(!API()||!c.aemet) return null;
+  const j=await aemetPlaya(c.aemet);
+  const p=Array.isArray(j)?j[0]:j, out={nombre:p.nombre,localidad:p.localidad,dias:{}};
+  (p.prediccion?.dia||[]).forEach(d=>{const f=String(d.fecha),key=`${f.slice(0,4)}-${f.slice(4,6)}-${f.slice(6,8)}`;
+    out.dias[key]={am:oleajeLvl(d.oleaje?.descripcion1),pm:oleajeLvl(d.oleaje?.descripcion2),amTxt:d.oleaje?.descripcion1,pmTxt:d.oleaje?.descripcion2,tAgua:d.tAgua?.valor1,viento:[d.viento?.descripcion1,d.viento?.descripcion2]}});
+  return out;
+}
+
+// ---------- modelo físico ----------
+function exposure(dir,c){const d=angDiff(dir,c.orient),a=c.aper;if(d<=a)return 1-0.4*(d/a)**2;if(d<=a+40)return 0.6-0.5*((d-a)/40);return 0.1}
+const breaker=(H,T)=>H<0.05||!T?0:0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4);
+const hbLevel=hb=>hb>th.warn?2:hb>th.go?1:0;
+function windEval(w,g,d,c){
+  const dW=angDiff(d,c.orient),on=dW<90?w*Math.cos(dW*Math.PI/180):0,off=dW>90?w*Math.cos((180-dW)*Math.PI/180):0;
+  let l=0;const why=[];const up=(x,t)=>{if(x>l)l=x;why.push([x,t])};
+  if(on>=30)up(2,`Viento entrando a la cala de ${Math.round(on)} km/h`);else if(on>=20)up(1,`Viento entrando a la cala de ${Math.round(on)} km/h: picado en la orilla`);
+  if(off>=25)up(1,`Viento de tierra de ${Math.round(off)} km/h: deriva hacia fuera en superficie`);
+  if(g>=60)up(2,`Rachas de ${Math.round(g)} km/h`);else if(g>=45)up(1,`Rachas de ${Math.round(g)} km/h`);
+  return {l,why,on,off};
+}
+function learnedK(cId){
+  const L=logs.filter(x=>x.cala===cId&&x.pred&&x.pred.hb!=null);
+  if(L.length<3)return {k:1,n:L.length};
+  let best={k:1,err:Infinity};
+  for(let k=0.4;k<=2.001;k+=0.05){let err=0;L.forEach(x=>{const lv=Math.max(hbLevel(x.pred.hb*k),x.pred.wl);err+=Math.abs(lv-x.out)});
+    if(err<best.err-1e-9||(Math.abs(err-best.err)<1e-9&&Math.abs(k-1)<Math.abs(best.k-1)))best={k,err}}
+  return {k:+best.k.toFixed(2),n:L.length};
+}
+// evalúa un instante i para una cala
+function evalAt(c,i,dayIdx){
+  const D=DATA[c.id],K=learnedK(c.id).k;
+  const per=[];
+  Object.entries(D.wave).forEach(([m,x])=>{const h=x.h[i],t=x.t[i],d=x.d[i];if(h==null||d==null)return;const f=exposure(d,c),hl=h*f,hb=breaker(hl,t)*K;per.push({m,h,t,d,f,hb,lv:hbLevel(hb)})});
+  const W=Object.entries(D.wind).map(([m,x])=>({m,w:x.w[i],g:x.g[i],d:x.d[i]})).filter(x=>x.w!=null);
+  // a 0-1 días manda AROME si existe; después, mediana
+  const arome=W.find(x=>x.m==="meteofrance_arome_france_hd");
+  const wsel=(dayIdx<=1&&arome)?{w:arome.w,g:arome.g,d:arome.d}:{w:median(W.map(x=>x.w)),g:median(W.map(x=>x.g)),d:circMean(W.map(x=>x.d))};
+  const we=wsel.w!=null?windEval(wsel.w,wsel.g||0,wsel.d||0,c):{l:0,why:[],on:0,off:0};
+  if(!per.length)return null;
+  const n=per.length,cnt=[0,0,0];per.forEach(p=>cnt[p.lv]++);
+  let lv=cnt[0]/n>=0.6?0:cnt[2]/n>=0.4?2:1;
+  const hbMed=median(per.map(p=>p.hb)),spread=Math.max(...per.map(p=>p.hb))-Math.min(...per.map(p=>p.hb));
+  const tLong=median(per.map(p=>p.t));
+  const why=[];
+  why.push([lv,`${cnt[0]} de ${n} modelos dan entrada factible (rompiente mediana ${hbMed.toFixed(2)} m)`]);
+  if(tLong>=8&&hbMed>0.3){lv=Math.max(lv,1);why.push([1,`Periodo largo (${tLong.toFixed(1)} s): entra con fuerza y puede haber resaca`])}
+  if(we.l>lv)lv=we.l; why.push(...we.why);
+  // confianza: dispersión entre modelos + horizonte + desacuerdo de viento
+  const wSpread=W.length>1?Math.max(...W.map(x=>x.w))-Math.min(...W.map(x=>x.w)):0;
+  const hz=[1,1,0.85,0.85,0.7,0.7,0.55][Math.min(6,Math.max(0,dayIdx))];
+  let conf=Math.max(0,1-spread/0.6)*hz*(wSpread>20?0.8:1); if(n<2)conf*=0.6;
+  return {lv,per,W,wsel,we,hbMed,spread,conf,why,n};
+}
+
+// ---------- UI ----------
+let cur=CALAS[0],sel=null;
+function gridIdx(D){ // índices de las horas de la rejilla (desde hoy)
+  const out=[];D.times.forEach((t,i)=>{if(t.slice(0,10)>=D.today&&HOURS.includes(+t.slice(11,13)))out.push(i)});return out.slice(0,28);
+}
+function rain48(D,date){
+  if(D.precipDaily){const s=new Date(SNAP.start+"T12:00:00"),d=new Date(date+"T12:00:00"),k=Math.round((d-s)/864e5)+2;return (D.precipDaily[k-2]||0)+(D.precipDaily[k-1]||0)}
+  let s=0;D.times.forEach((t,i)=>{const dt=new Date(t),ref=new Date(date+"T00:00");const diff=(ref-dt)/36e5;if(diff>0&&diff<=48)s+=D.precip[i]||0});return s;
+}
+function tabs(){
+  $("tabs").innerHTML=CALAS.map(c=>`<button role="tab" aria-selected="${c===cur}" data-id="${c.id}">${c.name}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{cur=CALAS.find(c=>c.id===b.dataset.id);sel=null;render()});
+}
+function controls(){
+  $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;
+  $("v-orient").textContent=`${cur.orient}° (${card(cur.orient)})`;$("v-aper").textContent=`±${cur.aper}°`;
+  $("v-tgo").textContent=`${(+th.go).toFixed(2)} m`;$("v-twarn").textContent=`${(+th.warn).toFixed(2)} m`;
+  const K=learnedK(cur.id);
+  $("kinfo").textContent=K.n>=3?`Ajuste aprendido con ${K.n} inmersiones: el oleaje real en esta cala es ×${K.k.toFixed(2)} lo estimado.`:`Orientación y apertura son una estimación inicial. Faltan ${3-K.n} registros para que la app aprenda esta cala.`;
+  $("aurl").value=api.url||"";$("apin").value=api.pin||"";$("acode").value=cur.aemet||"";$("amuni").value=cur.muni||"";
+}
+["orient","aper"].forEach(k=>$(k).oninput=e=>{cur[k]=+e.target.value;saveCfg();render()});
+["tgo","twarn"].forEach(k=>$(k).oninput=e=>{th[k==="tgo"?"go":"warn"]=+e.target.value;if(th.warn<th.go)th.warn=th.go;saveCfg();render()});
+
+function pt(deg,r){const a=(deg-90)*Math.PI/180;return [r*Math.cos(a),r*Math.sin(a)]}
+function arrow(deg,len,color,w){const [x1,y1]=pt(deg,92),[x2,y2]=pt(deg,92-len),a=Math.atan2(y2-y1,x2-x1),h=9;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/><polygon points="${x2},${y2} ${x2-h*Math.cos(a-.45)},${y2-h*Math.sin(a-.45)} ${x2-h*Math.cos(a+.45)},${y2-h*Math.sin(a+.45)}" fill="${color}"/>`}
+function compass(r){
+  const a1=cur.orient-cur.aper,a2=cur.orient+cur.aper,[sx,sy]=pt(a1,90),[ex,ey]=pt(a2,90);
+  let s=`<circle r="96" fill="var(--paper)" stroke="var(--line)"/><path d="M0 0 L${sx} ${sy} A90 90 0 ${cur.aper*2>180?1:0} 1 ${ex} ${ey} Z" fill="var(--sand)" opacity=".8"/>`;
+  for(let d=0;d<360;d+=30){const [x,y]=pt(d,96),[x2,y2]=pt(d,d%90?90:84);s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="var(--muted)"/>`}
+  [["N",0],["E",90],["S",180],["O",270]].forEach(([l,d])=>{const [x,y]=pt(d,74);s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="15" fill="var(--muted)">${l}</text>`});
+  if(r){r.per.forEach(p=>s+=arrow(p.d,28+Math.min(40,p.h*40),"var(--swell)",2.5));if(r.wsel.w>3)s+=arrow(r.wsel.d,24+Math.min(40,r.wsel.w),"var(--wind)",4)}
+  $("compass").innerHTML=s+`<circle r="5" fill="var(--ink)"/>`;
+}
+function aemetFor(c,date,hour){const a=aemetData[c.id];if(!a||!a.dias[date])return null;const d=a.dias[date];return {lv:hour<14?d.am:d.pm,txt:hour<14?d.amTxt:d.pmTxt,tAgua:d.tAgua}}
+
+function render(){
+  tabs();controls();
+  const D=DATA[cur.id];if(!D){$("status").textContent="Sin conexión y sin previsión guardada todavía: abre la app una vez con cobertura.";$("grid").innerHTML="";$("detail").innerHTML="";return}
+  const A=aemetData[cur.id];
+  const nW=Object.keys(D.wave).length,nV=Object.keys(D.wind).length;
+  $("status").textContent=(D.live?`En directo: ${nW} modelos de oleaje y ${nV} de viento (Open-Meteo).`:D.savedAt?`Sin conexión: previsión guardada el ${new Date(D.savedAt).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}.`:`Sin conexión: se muestra la instantánea del 2 oct con un solo modelo.`)+(A?` AEMET: playa ${A.nombre} (${A.localidad}).`:API()?(cur.aemet?" AEMET: sin datos para esta playa.":" AEMET: falta el código de playa de esta cala."):" Conecta el servidor en «Conexión y AEMET» para ver AEMET y sincronizar registros.")+(pending.length?` ${pending.length} registro(s) pendientes de subir.`:"");
+  const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");
+  let html=`<thead><tr><th></th>${HOURS.map(h=>`<th>${h}:00</th>`).join("")}</tr></thead><tbody>`;
+  for(let day=0;day<7;day++){
+    const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toISOString().slice(0,10);
+    const r48=rain48(D,date);const ii=idx.slice(day*4,day*4+4);if(!ii.length)continue;
+    const sstVals=ii.map(i=>D.sst[i]).filter(v=>v!=null);const ae=aemetFor(cur,date,8);
+    html+=`<tr><td class="day">${DIAS[dt.getDay()]} ${dt.getDate()}<small>agua ${sstVals.length?median(sstVals).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${r48>=20?`<span class="vis">visibilidad baja</span>`:""}</td>`;
+    ii.forEach(i=>{const hr=+D.times[i].slice(11,13),r=evalAt(cur,i,day);if(!r){html+="<td></td>";return}
+      const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
+      if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
+      const low=r.conf<0.45;
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ${LVTXT[lv]}, confianza ${Math.round(r.conf*100)}%">${disc?'<span class="flag">A!</span>':""}${r.hbMed.toFixed(1)} m<small>${r.n>1?`${r.per.filter(p=>p.lv===0).length}/${r.n} · `:""}${Math.round(r.conf*100)}%</small></button></td>`});
+    html+="</tr>";
+  }
+  $("grid").innerHTML=html+"</tbody>";
+  $("grid").querySelectorAll(".cell").forEach(b=>b.onclick=()=>{sel=+b.dataset.i;selDay=+b.dataset.day;render()});
+  detail(D,idx);
+  renderLogs();
+}
+let selDay=0;
+function detail(D,idx){
+  const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r)return;
+  const date=D.times[i].slice(0,10),hr=+D.times[i].slice(11,13),dt=new Date(date+"T12:00:00"),a=aemetFor(cur,date,hr),r48=rain48(D,date);
+  const name=(k)=>(WAVE_MODELS.find(x=>x[0]===k)||WIND_MODELS.find(x=>x[0]===k)||[k,"Combinado"])[1];
+  $("detail").innerHTML=`<h2>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00${sel===null?" (toca una casilla)":""}</h2>
+  <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th><th>Entra</th><th>Rompiente</th><th></th></tr></thead><tbody>
+  ${r.per.map(p=>`<tr><td>${name(p.m)}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td><td>${Math.round(p.f*100)} %</td><td>${p.hb.toFixed(2)} m</td><td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
+  </tbody></table>
+  <dl>
+   <dt>Viento usado (${day<=1&&r.W.find(x=>x.m==="meteofrance_arome_france_hd")?"AROME":"mediana de modelos"})</dt><dd>${Math.round(r.wsel.w)} km/h del ${card(r.wsel.d)}, rachas ${Math.round(r.wsel.g||0)}</dd>
+   ${r.W.length>1?`<dt>Viento por modelo</dt><dd>${r.W.map(x=>`${name(x.m)} ${Math.round(x.w)}`).join(" · ")}</dd>`:""}
+   <dt>AEMET playa</dt><dd>${a?`oleaje ${a.txt||"–"}${a.tAgua!=null?` · agua ${a.tAgua} °C`:""}`:"sin dato"}</dd>
+   <dt>Lluvia 48 h previas</dt><dd>${Math.round(r48)} mm</dd>
+   <dt>Confianza</dt><dd><strong>${Math.round(r.conf*100)} %</strong> ${r.conf>=0.7?"alta":r.conf>=0.45?"media":"baja"}</dd>
+  </dl>
+  <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv!==Math.min(r.lv,2)?`<li>AEMET da oleaje ${a.txt} para esta franja.</li>`:""}${r48>=20?"<li>Lluvia reciente: es probable que el agua esté turbia.</li>":""}</ul>
+  <p class="note">Estimación orientativa: no sustituye a mirar el mar en la propia cala ni al criterio del guía.</p>`;
+}
+
+// ---------- registro de inmersiones ----------
+function renderLogs(){
+  const L=logs.filter(x=>x.cala===cur.id).slice(-8).reverse();
+  $("lg-list").innerHTML=L.map(x=>`<li>${x.date} ${x.hour}:00 · ${["Fácil","Con dificultad","No entré"][x.out]}${x.vis!=null?` · ${x.vis} m vis.`:""}${x.pred?` · previsto ${x.pred.hb.toFixed(2)} m`:" · sin previsión guardada"}</li>`).join("");
+}
+$("lg-date").value=new Date().toISOString().slice(0,10);
+$("lg-save").onclick=()=>{
+  const date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=$("lg-vis").value===""?null:+$("lg-vis").value;
+  const D=DATA[cur.id];let pred=null;
+  if(D){let best=-1,bd=1e9;D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const d=Math.abs(+t.slice(11,13)-hour);if(d<bd){bd=d;best=i}}});
+    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r)pred={hb:r.hbMed/K,wl:r.we.l}}}
+  const entry={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),cala:cur.id,date,hour,out,vis,pred};
+  logs.push(entry);store.set("calas3-logs",logs);
+  srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(()=>{pending.push(entry);store.set("calas3-pending",pending);render()});
+  $("lg-msg").textContent=pred?"Registro guardado con la previsión de ese momento.":"Registro guardado. No había previsión para esa fecha (solo se guardan hasta 3 días atrás), así que no cuenta para el ajuste.";
+  render();
+};
+$("lg-export").onclick=()=>{const b=new Blob([JSON.stringify({calas:CALAS.map(({id,orient,aper,aemet})=>({id,orient,aper,aemet})),logs},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="registros-inmersiones.json";a.click()};
+$("lg-import").onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(Array.isArray(j.logs)){j.logs.forEach(x=>{if(!x.id)x.id=Date.now().toString(36)+Math.random().toString(36).slice(2,7);if(!logs.some(l=>l.id===x.id)){logs.push(x);pending.push(x)}});store.set("calas3-logs",logs);store.set("calas3-pending",pending);flushPending()}(j.calas||[]).forEach(x=>{const c=CALAS.find(c=>c.id===x.id);if(c)Object.assign(c,x)});saveCfg();$("lg-msg").textContent=`Importados ${logs.length} registros.`;render()}catch(err){$("lg-msg").textContent="El archivo no es un export válido de esta app."}};
+
+// ---------- conexión y AEMET ----------
+async function flushPending(){
+  if(!serverOK||!pending.length)return;
+  const left=[];for(const e of pending){try{await srv("/logs",{method:"POST",body:JSON.stringify(e)})}catch(err){left.push(e)}}
+  pending=left;store.set("calas3-pending",pending);
+}
+async function connect(){
+  serverOK=false;if(!API()){$("aconn").textContent="Sin servidor configurado: los registros solo se guardan en este dispositivo.";return}
+  try{
+    const remote=await srv("/logs");
+    const ids=new Set(remote.map(x=>x.id));logs.forEach(x=>{if(x.id&&!ids.has(x.id)&&!pending.some(p=>p.id===x.id))pending.push(x)});
+    serverOK=true;await flushPending();
+    logs=await srv("/logs");store.set("calas3-logs",logs);
+    const rc=await srv("/config");
+    if(rc&&rc.calas){CALAS.forEach(c=>Object.assign(c,rc.calas[c.id]||{}));if(rc.th)Object.assign(th,rc.th);store.set("calas3-cfg",rc.calas);store.set("calas3-th",th)}
+    else saveCfg();
+    $("aconn").textContent=`Conectado. ${logs.length} registro(s) sincronizados.`;
+  }catch(e){$("aconn").textContent=/PIN/.test(e.message)?"El servidor responde, pero el PIN no es correcto.":`No se ha podido conectar: ${e.message}.`}
+}
+$("asave").onclick=async()=>{api={url:$("aurl").value.trim(),pin:$("apin").value.trim()};store.set("calas3-api",api);await connect();await refreshAemet();render()};
+$("acodesave").onclick=async()=>{cur.aemet=$("acode").value.trim();cur.muni=$("amuni").value.trim();saveCfg();await refreshAemet();render()};
+$("afind").onclick=async()=>{
+  const muni=$("amuni").value.trim();
+  if(!API()){$("afound").textContent="Primero conecta el servidor.";return}
+  if(!/^\d{5}$/.test(muni)){$("afound").textContent="El código de municipio tiene 5 cifras (p. ej. 17202 para Tossa).";return}
+  $("afound").textContent="Buscando…";const found=[];
+  for(let n=1;n<=15;n++){const code=muni+String(n).padStart(2,"0");try{const j=await aemetPlaya(code);const p=Array.isArray(j)?j[0]:j;if(p&&p.nombre)found.push([code,p.nombre])}catch(e){}await new Promise(r=>setTimeout(r,700))}
+  $("afound").innerHTML=found.length?"Toca una para usarla y luego «Guardar código»: "+found.map(([c,n])=>`<button class="btn ghost" style="margin:3px" data-c="${c}">${n}</button>`).join(""):"No he encontrado playas con ese código. Comprueba el código INE del municipio.";
+  $("afound").querySelectorAll("button").forEach(b=>b.onclick=()=>{$("acode").value=b.dataset.c});
+};
+async function refreshAemet(){
+  for(const c of CALAS){try{aemetData[c.id]=await loadAemet(c)}catch(e){aemetData[c.id]=null}}
+}
+
+// ---------- arranque ----------
+(async()=>{
+  const todayStr=new Date().toLocaleDateString("sv-SE",{timeZone:"Europe/Madrid"});
+  for(const c of CALAS){
+    try{DATA[c.id]=await loadOpenMeteo(c);store.set("calas3-fc-"+c.id,{savedAt:Date.now(),d:DATA[c.id]})}
+    catch(e){const s=store.get("calas3-fc-"+c.id,null);
+      if(s&&s.d){const d=s.d;d.live=false;d.savedAt=s.savedAt;if(d.times.some(t=>t.startsWith(todayStr)))d.today=todayStr;DATA[c.id]=d}
+      else DATA[c.id]=null}
+  }
+  render();
+  await connect();render();
+  if(API()){await refreshAemet();render()}
+  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+
+</script>
+</body>
+</html>
