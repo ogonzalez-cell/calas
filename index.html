@@ -82,16 +82,30 @@ th.tarde{color:var(--posidonia)}
 .cell .u{font-size:12px}
 .cell .hs{white-space:nowrap}
 .cell small{white-space:nowrap;line-height:1.25;font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:clip}
+@media (max-width:860px){
+  .col-izq{display:contents}
+  .o1{order:1}.col-der{order:2}.o3{order:3}.o4{order:4}.o5{order:5}
+  .panel{margin-bottom:0}
+  .compass{max-width:190px}
+}
 @media (max-width:640px){
   main{padding:12px 8px 30px;gap:12px}
   .panel{padding:12px}
   table{border-spacing:2px}
   th{font-size:12px;text-align:center;padding:0}
   .cell{min-height:46px;font-size:15px;border-radius:7px;padding:0}
-  .cell small.full{display:none}
+  .cell .full{display:none}
   .cell .u{display:none}
   .cell .flag{top:1px;right:2px;font-size:8px}
   tr.dayrow td.day small.expod{display:none}
+}
+.pick{display:none}
+@media (max-width:640px){
+  .tabs{display:none}
+  header{padding-bottom:14px}
+  .pick{display:block}
+  .pick span{display:block;font:600 15px "Barlow Condensed",sans-serif;color:#A9C2C6;margin:0 0 6px}
+  .pick select{width:100%;font:600 19px "Barlow Condensed",sans-serif;padding:10px 12px;border-radius:10px;border:0;background:var(--foam);color:var(--ink)}
 }
 </style>
 </head>
@@ -100,10 +114,11 @@ th.tarde{color:var(--posidonia)}
   <h1>¿Se puede bucear hoy?</h1>
   <p class="sub">Referencia ECMWF (el modelo por defecto de Windy), contrastada con otros 4 modelos y con AEMET, y ajustada con tus inmersiones.</p>
   <div class="tabs" role="tablist" id="tabs"></div>
+  <label class="pick" for="psel"><span>¿Dónde vas a bucear?</span><select id="psel"></select></label>
 </header>
 <main>
- <div>
-  <section class="panel" aria-labelledby="h-cala">
+ <div class="col-izq">
+  <section class="panel o1" aria-labelledby="h-cala">
     <h2 id="h-cala">Punto</h2>
     <p class="note" id="ptipo"></p>
     <svg class="compass" id="compass" viewBox="-110 -110 220 220" role="img" aria-label="Rosa de los vientos con la apertura del punto"></svg>
@@ -121,7 +136,7 @@ th.tarde{color:var(--posidonia)}
     <p class="note" id="kinfo"></p>
   </section>
 
-  <section class="panel" aria-labelledby="h-log">
+  <section class="panel o3" aria-labelledby="h-log">
     <h2 id="h-log">Registrar inmersión</h2>
     <p class="note">Anota cómo fue y la visibilidad real. Con 3 o más registros por punto, la app ajusta sola el oleaje y la visibilidad.</p>
     <div class="row"><div><label class="note" for="lg-date">Día</label><input type="date" id="lg-date"></div><div><label class="note" for="lg-hour">Hora</label><input type="number" id="lg-hour" min="6" max="21" value="10"></div></div>
@@ -132,7 +147,7 @@ th.tarde{color:var(--posidonia)}
     <p><button class="btn ghost" id="lg-export">Exportar registros</button> <label class="btn ghost" style="display:inline-block">Importar<input type="file" id="lg-import" accept=".json" hidden></label></p>
   </section>
 
-  <section class="panel">
+  <section class="panel o4">
     <details id="pedit">
       <summary>Editar puntos</summary>
       <div class="ctl"><label for="p-name">Nombre</label><input type="text" id="p-name"></div>
@@ -147,7 +162,7 @@ th.tarde{color:var(--posidonia)}
     </details>
   </section>
 
-  <section class="panel">
+  <section class="panel o5">
     <details id="cfg">
       <summary>Conexión</summary>
       <div class="ctl"><label for="aurl">Dirección del servidor</label><input type="text" id="aurl" autocomplete="off" placeholder="https://buceo-api.tuusuario.workers.dev"></div>
@@ -159,7 +174,7 @@ th.tarde{color:var(--posidonia)}
   </section>
  </div>
 
- <div>
+ <div class="col-der">
   <section class="panel">
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
@@ -426,6 +441,8 @@ function rain48(D,date){let s=0;const ref=new Date(date+"T00:00");D.times.forEac
 function tabs(){
   $("tabs").innerHTML=PUNTOS.map(p=>`<button role="tab" aria-selected="${p===cur}" data-id="${p.id}">${esc(p.name)}${p.tipo==="barco"?" ⛵":""}</button>`).join("");
   $("tabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{cur=PUNTOS.find(p=>p.id===b.dataset.id);sel=null;fillEditor();render()});
+  $("psel").innerHTML=PUNTOS.map(p=>`<option value="${p.id}"${p===cur?" selected":""}>${esc(p.name)}${p.tipo==="barco"?" (barco)":""}</option>`).join("");
+  $("psel").onchange=e=>{cur=PUNTOS.find(p=>p.id===e.target.value);sel=null;fillEditor();render()};
 }
 function controls(){
   const playa=cur.tipo==="playa";
