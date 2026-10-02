@@ -44,7 +44,7 @@ input[type=text],input[type=password],input[type=date],input[type=number],select
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:8px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .grid-wrap{overflow-x:auto}
 table{border-collapse:separate;border-spacing:4px;width:100%}
-#grid{min-width:540px}
+#grid{min-width:0;table-layout:fixed}
 th{font:600 14px "Barlow Condensed",sans-serif;color:var(--muted);text-align:left;padding:2px 4px}
 td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .cell{position:relative;border:0;width:100%;min-height:58px;border-radius:9px;color:#fff;font:600 17px "Barlow Condensed",sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
@@ -70,6 +70,29 @@ small.expod{display:block;font-weight:400;font-size:11px;color:var(--muted);whit
 td.day{white-space:normal;min-width:120px}
 .visb{display:block;width:max-content;font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;margin-top:3px;border:1px solid var(--line)}
 .visb.v0{color:var(--go)}.visb.v1{color:#A97A00}.visb.v2{color:var(--stop)}
+tr.dayrow td.day{padding:10px 4px 2px;white-space:normal;min-width:0;text-align:left}
+tr.dayrow td.day>*{margin-right:10px;vertical-align:baseline}
+tr.dayrow .expo,tr.dayrow .visb{display:inline-block}
+tr.dayrow td.day b{font:600 17px "Barlow Condensed",sans-serif}
+tr.dayrow td.day small{display:inline;font-size:12px}
+tr.dayrow td.day small.expod{display:inline;max-width:none}
+tr.dayrow .expo,tr.dayrow .visb{margin-top:2px}
+th.tarde{color:var(--posidonia)}
+.cell small.wnd{font-size:11px}
+.cell .u{font-size:12px}
+.cell .hs{white-space:nowrap}
+.cell small{white-space:nowrap;line-height:1.25;font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:clip}
+@media (max-width:640px){
+  main{padding:12px 8px 30px;gap:12px}
+  .panel{padding:12px}
+  table{border-spacing:2px}
+  th{font-size:12px;text-align:center;padding:0}
+  .cell{min-height:46px;font-size:15px;border-radius:7px;padding:0}
+  .cell small.full{display:none}
+  .cell .u{display:none}
+  .cell .flag{top:1px;right:2px;font-size:8px}
+  tr.dayrow td.day small.expod{display:none}
+}
 </style>
 </head>
 <body>
@@ -148,7 +171,7 @@ td.day{white-space:normal;min-width:120px}
  </div>
 </main>
 <script>
-const HOURS=[8,11,14,17];
+const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
 const REF_WAVE=["ecmwf_wam025","meteofrance_wave","ncep_gfswave025","ewam","gwam"]; // orden de preferencia como referencia
@@ -397,7 +420,7 @@ const nameOf=k=>(WAVE_MODELS.find(x=>x[0]===k)||WIND_MODELS.find(x=>x[0]===k)||[
 
 // ---------- UI ----------
 let cur=PUNTOS[0],sel=null,selDay=0;
-function gridIdx(D){const out=[];D.times.forEach((t,i)=>{if(t.slice(0,10)>=D.today&&HOURS.includes(+t.slice(11,13)))out.push(i)});return out.slice(0,28)}
+function gridIdx(D){const out=[];D.times.forEach((t,i)=>{if(t.slice(0,10)>=D.today&&HOURS.includes(+t.slice(11,13)))out.push(i)});return out.slice(0,7*HOURS.length)}
 function rain48(D,date){let s=0;const ref=new Date(date+"T00:00");D.times.forEach((t,i)=>{const diff=(ref-new Date(t))/36e5;if(diff>0&&diff<=48)s+=D.precip[i]||0});return s}
 function tabs(){
   $("tabs").innerHTML=PUNTOS.map(p=>`<button role="tab" aria-selected="${p===cur}" data-id="${p.id}">${esc(p.name)}${p.tipo==="barco"?" ⛵":""}</button>`).join("");
@@ -439,17 +462,17 @@ function render(){
   $("status").innerHTML=(D.live?`<span class="upd">Actualizado ${fmtTime(D.fetchedAt)}</span> · ${nW} modelos de oleaje y ${nV} de viento.`:`Sin conexión: previsión guardada ${fmtTime(D.savedAt)}.`)+
     (A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?" AEMET sin datos ahora.":" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir.`:"");
   const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");
-  let html=`<thead><tr><th></th>${HOURS.map(h=>`<th>${h}:00</th>`).join("")}</tr></thead><tbody>`;
+  let html=`<thead><tr>${HOURS.map(h=>`<th class="${h>13?"tarde":""}">${h}h</th>`).join("")}</tr></thead><tbody>`;
   for(let day=0;day<7;day++){
     const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toLocaleDateString("sv-SE");
-    const ii=idx.slice(day*4,day*4+4);if(!ii.length)continue;
+    const ii=idx.slice(day*HOURS.length,(day+1)*HOURS.length);if(!ii.length)continue;
     const r48=rain48(D,date),sv=ii.map(i=>D.sst[i]).filter(v=>v!=null),ae=aemetFor(cur,date,8);
-    html+=`<tr><td class="day">${DIAS[dt.getDay()]} ${dt.getDate()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td>`;
+    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b><small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
     ii.forEach(i=>{const hr=+D.times[i].slice(11,13),r=evalAt(cur,i,day);if(!r){html+="<td></td>";return}
       const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${r.ref.h.toFixed(1)} metros, ${LVTXT[lv]}">${disc?'<span class="flag">A!</span>':""}${r.ref.h.toFixed(1)} m<small>${sub} · ${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${r.ref.h.toFixed(1)} metros, ${LVTXT[lv]}">${disc?'<span class="flag">A!</span>':""}<span class="hs">${r.ref.h.toFixed(1)}<span class="u"> m</span></span>${sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
