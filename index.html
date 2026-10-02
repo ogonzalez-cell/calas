@@ -68,6 +68,8 @@ details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
 small.expod{display:block;font-weight:400;font-size:11px;color:var(--muted);white-space:normal;max-width:150px;line-height:1.25}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .expo.e0{background:#1E4A38;color:#BFE8D3}:root:not([data-theme="light"]) .expo.e1{background:#5A4712;color:#F5E2A8}:root:not([data-theme="light"]) .expo.e2{background:#5E2A22;color:#F2C9C1}}
 td.day{white-space:normal;min-width:120px}
+.visb{display:block;width:max-content;font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;margin-top:3px;border:1px solid var(--line)}
+.visb.v0{color:var(--go)}.visb.v1{color:#A97A00}.visb.v2{color:var(--stop)}
 </style>
 </head>
 <body>
@@ -98,7 +100,7 @@ td.day{white-space:normal;min-width:120px}
 
   <section class="panel" aria-labelledby="h-log">
     <h2 id="h-log">Registrar inmersión</h2>
-    <p class="note">Anota cómo fue. Con 3 o más registros en una cala, la app ajusta sola cuánto oleaje le llega.</p>
+    <p class="note">Anota cómo fue y la visibilidad real. Con 3 o más registros por punto, la app ajusta sola el oleaje y la visibilidad.</p>
     <div class="row"><div><label class="note" for="lg-date">Día</label><input type="date" id="lg-date"></div><div><label class="note" for="lg-hour">Hora</label><input type="number" id="lg-hour" min="6" max="21" value="10"></div></div>
     <div class="row" style="margin-top:8px"><div><label class="note" for="lg-out">Condiciones</label><select id="lg-out"><option value="0">Fácil</option><option value="1">Con dificultad</option><option value="2">No se pudo / peligrosa</option></select></div><div><label class="note" for="lg-vis">Visibilidad (m)</label><input type="number" id="lg-vis" min="0" max="40" placeholder="opcional"></div></div>
     <p style="margin:10px 0 0"><button class="btn" id="lg-save">Guardar registro</button></p>
@@ -113,6 +115,7 @@ td.day{white-space:normal;min-width:120px}
       <div class="ctl"><label for="p-name">Nombre</label><input type="text" id="p-name"></div>
       <div class="row"><div><label class="note" for="p-tipo">Tipo</label><select id="p-tipo"><option value="playa">Entrada desde playa</option><option value="barco">Salida en barco</option></select></div></div>
       <div class="row" style="margin-top:8px"><div><label class="note" for="p-lat">Latitud</label><input type="number" id="p-lat" step="0.0001"></div><div><label class="note" for="p-lon">Longitud</label><input type="number" id="p-lon" step="0.0001"></div></div>
+      <div class="ctl"><label for="p-vis">Visibilidad habitual con buen tiempo (m)</label><input type="number" id="p-vis" min="2" max="40"></div>
       <div class="ctl"><label for="p-aemet">Código de playa AEMET de referencia</label><input type="text" id="p-aemet" inputmode="numeric" placeholder="p. ej. 1720207"></div>
       <div class="row"><div><label class="note" for="p-muni">Buscar por municipio (código INE)</label><input type="text" id="p-muni" inputmode="numeric" placeholder="p. ej. 17202"></div><div style="flex:0"><button class="btn ghost" id="p-find">Buscar</button></div></div>
       <p class="note" id="p-found"></p>
@@ -138,7 +141,7 @@ td.day{white-space:normal;min-width:120px}
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
     <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span></div>
-    <p class="note" style="margin:0 0 6px">Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: rompiente estimada en la orilla o periodo, y viento.</p>
+    <p class="note" style="margin:0 0 6px">Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, rompiente estimada en la orilla (o periodo) y viento.</p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
   </section>
@@ -174,7 +177,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 // ---------- configuración ----------
 let PUNTOS=store.get("calas4-puntos",null);
 if(!PUNTOS){PUNTOS=JSON.parse(JSON.stringify(DEFAULT_PUNTOS));const old=store.get("calas3-cfg",{});PUNTOS.forEach(p=>{if(old[p.id]){p.orient=old[p.id].orient??p.orient;p.aper=old[p.id].aper??p.aper}})}
-const th=Object.assign({go:0.5,warn:0.8,bgo:0.8,bwarn:1.2},store.get("calas3-th",{}),store.get("calas4-th",{}));
+const th=Object.assign({go:0.7,warn:1.0,bgo:0.8,bwarn:1.2},store.get("calas4-th",{}));if(!th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1}
 let api=store.get("calas3-api",{url:"",pin:""});
 let logs=store.get("calas3-logs",[]);
 let pending=store.get("calas3-pending",[]);
@@ -201,13 +204,20 @@ async function loadOpenMeteo(p){
     get(`https://api.open-meteo.com/v1/forecast?${base}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&models=${WIND_MODELS.map(x=>x[0]).join(",")}`),
     get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=sea_surface_temperature`).catch(()=>null)
   ]);
+  const CV=["swell_wave_height","swell_wave_period","swell_wave_direction","wind_wave_height","wind_wave_period","wind_wave_direction"],CV2=["secondary_swell_wave_height","secondary_swell_wave_period","secondary_swell_wave_direction"];
+  let c=await get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&models=ecmwf_wam025&hourly=${CV.concat(CV2).join(",")}`).catch(()=>null);
+  if(!c)c=await get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&models=ecmwf_wam025&hourly=${CV.join(",")}`).catch(()=>null);
+  let comp=null;
+  if(c&&c.hourly){const C=c.hourly,g=v=>C[v]||C[v+"_ecmwf_wam025"]||null;
+    const mk=(p)=>{const h=g(p+"_height");return h&&h.some(x=>x!=null)?{h,t:g(p+"_period")||[],d:g(p+"_direction")||[]}:null};
+    comp={sw:mk("swell_wave"),sw2:mk("secondary_swell_wave"),ww:mk("wind_wave")};if(!comp.sw&&!comp.ww)comp=null}
   const H=m.hourly,W=w.hourly,times=H.time,wave={},wind={};
   WAVE_MODELS.forEach(([k])=>{const h=pick(H,"wave_height",k);if(h&&h.some(v=>v!=null))wave[k]={h,t:pick(H,"wave_period",k)||[],d:pick(H,"wave_direction",k)||[]}});
   WIND_MODELS.forEach(([k])=>{const sp=pick(W,"wind_speed_10m",k);if(sp&&sp.some(v=>v!=null))wind[k]={w:sp,g:pick(W,"wind_gusts_10m",k)||[],d:pick(W,"wind_direction_10m",k)||[]}});
   const sst=s&&s.hourly&&s.hourly.sea_surface_temperature?s.hourly.sea_surface_temperature:times.map(()=>null);
   const pKeys=Object.keys(W).filter(k=>k.startsWith("precipitation"));
   const precip=W.time.map((_,i)=>median(pKeys.map(k=>W[k][i])));
-  return {times,wave,wind,sst,precip,today:times[72].slice(0,10),live:true};
+  return {times,wave,wind,sst,precip,comp,today:times[72].slice(0,10),live:true};
 }
 async function aemetPlaya(code){
   const hk=new Date().toISOString().slice(0,13); // evita respuestas antiguas guardadas por el navegador
@@ -253,12 +263,26 @@ function learnedK(pid){
     if(err<best.err-1e-9||(Math.abs(err-best.err)<1e-9&&Math.abs(k-1)<Math.abs(best.k-1)))best={k,err}}
   return {k:+best.k.toFixed(2),n:L.length};
 }
+const COMP_NOM={sw:"Mar de fondo",sw2:"Mar de fondo 2",ww:"Mar de viento"};
+function compAt(p,D,i){
+  if(!D.comp)return null;const out=[];
+  for(const k of ["sw","sw2","ww"]){const x=D.comp[k];if(!x)continue;const h=x.h[i];if(h==null||h<0.05)continue;const d=x.d[i];
+    out.push({k,h,t:x.t[i],d,f:p.tipo==="playa"&&d!=null?exposure(d,p):1})}
+  return out.length?out:null;
+}
 function evalAt(p,i,dayIdx){
   const D=DATA[p.id];if(!D)return null;const K=learnedK(p.id).k;
   const per=[];
   Object.entries(D.wave).forEach(([m,x])=>{const h=x.h[i],t=x.t[i],d=x.d[i];if(h==null||d==null)return;const r=waveLevel(p,h,t,d,K);per.push({m,h,t,d,...r})});
   if(!per.length)return null;
   const ref=REF_WAVE.map(k=>per.find(x=>x.m===k)).find(Boolean);
+  const comps=compAt(p,D,i);
+  if(comps&&ref.m==="ecmwf_wam025"){
+    const loc=comps.map(c=>({...c,e:c.h*c.f})),hl=Math.sqrt(loc.reduce((s,c)=>s+c.e*c.e,0)),dom=loc.reduce((a,b)=>b.e>a.e?b:a);
+    ref.comps=loc;
+    if(p.tipo==="playa"){ref.hb=breaker(hl,dom.t)*K;ref.val=ref.hb;ref.f=ref.h>0?hl/ref.h:1;ref.lv=ref.hb>th.warn?2:ref.hb>th.go?1:0;ref.domD=dom.d}
+    ref.t=comps.reduce((a,b)=>b.h>a.h?b:a).t??ref.t;
+  }
   const W=Object.entries(D.wind).map(([m,x])=>({m,w:x.w[i],g:x.g[i],d:x.d[i]})).filter(x=>x.w!=null);
   const wref=REF_WIND.map(k=>W.find(x=>x.m===k)).find(Boolean)||{w:0,g:0,d:0,m:"–"};
   const we=windEval(wref.w,wref.g||0,wref.d||0,p);
@@ -291,16 +315,83 @@ function exposicion(p,wDir,wSpd,sDir,hs){
   if(wSpd<12)partes.push(`viento flojo (${vtxt})`);else if(vientoCara)partes.push(`${vn} de cara`);else if(vientoLado)partes.push(`${vn} de lado`);else partes.push(`${vn} de tierra`);
   if(hs<0.3)partes.push("mar en calma");else if(marCara)partes.push(`mar del ${card(sDir)} de frente`);else if(marLado)partes.push(`mar del ${card(sDir)} de lado`);else partes.push(`a resguardo del mar del ${card(sDir)}`);
   let lv,txt;
-  if((vientoCara&&wSpd>=18)||(marCara&&hs>=0.5)){lv=2;txt="Cala expuesta"}
-  else if(vientoCara||marCara||vientoLado&&wSpd>=20||marLado&&hs>=0.6){lv=1;txt="Parcialmente expuesta"}
+  if((vientoCara&&wSpd>=18)||(marCara&&hs>=0.7)){lv=2;txt="Cala expuesta"}
+  else if(vientoCara||(marCara&&hs>=0.4)||vientoLado&&wSpd>=20||marLado&&hs>=0.7){lv=1;txt="Parcialmente expuesta"}
   else {lv=0;txt="Cala resguardada"}
   if(vientoTierra&&wSpd>=20)partes.push("ojo a la deriva hacia fuera");
   return {lv,txt,detalle:partes.join(" · ")};
 }
 function expoDia(p,D,ii){
-  const r=ii.map(i=>{const ref=REF_WAVE.map(k=>D.wave[k]).find(x=>x&&x.h[i]!=null);const wr=REF_WIND.map(k=>D.wind[k]).find(x=>x&&x.w[i]!=null);return ref&&wr?{h:ref.h[i],sd:ref.d[i],w:wr.w[i],wd:wr.d[i]}:null}).filter(Boolean);
+  const r=ii.map(i=>{const ref=REF_WAVE.map(k=>D.wave[k]).find(x=>x&&x.h[i]!=null);const wr=REF_WIND.map(k=>D.wind[k]).find(x=>x&&x.w[i]!=null);if(!ref||!wr)return null;
+    let sd=ref.d[i],h=ref.h[i];const cs=compAt(p,D,i);if(cs&&p.tipo==="playa"){const top=cs.reduce((a,b)=>b.h*b.f>a.h*a.f?b:a);sd=top.d;h=Math.sqrt(cs.reduce((s,c)=>s+(c.h*c.f)**2,0))/Math.max(0.05,exposure(top.d,p))}
+    return {h,sd,w:wr.w[i],wd:wr.d[i]}}).filter(Boolean);
   if(!r.length)return null;
   return exposicion(p,circ(r.map(x=>x.wd)),Math.max(...r.map(x=>x.w)),circ(r.map(x=>x.sd)),Math.max(...r.map(x=>x.h)));
+}
+// ---------- satélite (Copernicus, vía servidor) ----------
+const SAT={},KD_L3="OCEANCOLOUR_MED_BGC_L3_NRT_009_141/cmems_obs-oc_med_bgc-transp_nrt_l3-",KD_L4="OCEANCOLOUR_MED_BGC_L4_NRT_009_142/cmems_obs-oc_med_bgc-transp_nrt_l4-multi-1km_P1M_202207/KD490";
+async function kdAt(layer,lat,lon,time){try{const j=await fetch(`${API()}/cop/valor?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&z=9&layer=${encodeURIComponent(layer)}&time=${time}`).then(r=>r.json());const v=j.respuesta?.features?.[0]?.properties?.value;return typeof v==="number"&&v>0?v:null}catch(e){return null}}
+async function loadSat(p){
+  if(!API())return null;
+  const off=p.tipo==="playa"?pt2(p.orient,0.012):[0,0]; // un poco mar adentro: el píxel pegado a la costa suele venir vacío
+  const cands=[[p.lat,p.lon],[p.lat+off[0],p.lon+off[1]],[p.lat+2*off[0],p.lon+2*off[1]]];
+  const hoy=new Date();let diario=null;
+  for(let d=1;d<=7&&!diario;d++){const t=new Date(hoy);t.setDate(t.getDate()-d);const ts=t.toISOString().slice(0,10)+"T00:00:00Z";
+    const vals=await Promise.all(cands.flatMap(([a,b])=>[kdAt(KD_L3+"olci-300m_P1D_202207/KD490",a,b,ts),kdAt(KD_L3+"multi-1km_P1D_202207/KD490",a,b,ts)]));
+    const v=vals.find(x=>x!=null);if(v)diario={kd:v,fecha:ts.slice(0,10)}}
+  let mes=null;for(let k=1;k<=3&&!mes;k++){const t=new Date(hoy.getFullYear(),hoy.getMonth()-k,1);const ts=t.toLocaleDateString("sv-SE").slice(0,8)+"01T00:00:00Z";
+    for(const [a,b] of cands){const v=await kdAt(KD_L4,a,b,ts);if(v){mes={kd:v,mes:ts.slice(0,7)};break}}}
+  const KD_MOD="MEDSEA_ANALYSISFORECAST_BGC_006_014/cmems_mod_med_bgc-optics_anfc_4.2km_P1D-m_202511/kd490";
+  const modelo={};
+  const mc=[[p.lat,p.lon],[p.lat+3*off[0],p.lon+3*off[1]],[p.lat+6*off[0],p.lon+6*off[1]]];
+  await Promise.all([...Array(7)].map(async(_,d)=>{const t=new Date(hoy);t.setDate(t.getDate()+d);const ds=t.toLocaleDateString("sv-SE");
+    for(const [a,b] of mc){const v=await kdAt(KD_MOD,a,b,ds+"T00:00:00Z");if(v){modelo[ds]=v;break}}}));
+  return {diario,mes,modelo};
+}
+function pt2(deg,dist){const a=deg*Math.PI/180;return [dist*Math.cos(a),dist*Math.sin(a)/Math.cos(41.8*Math.PI/180)]}
+function satFactor(pid,dayIdx){
+  const s=SAT[pid];if(!s||!s.diario||!s.mes)return null;
+  const raw=Math.max(0.5,Math.min(1.3,Math.pow(s.mes.kd/s.diario.kd,0.7)));
+  const edad=Math.round((Date.now()-new Date(s.diario.fecha))/864e5)+dayIdx;const w=Math.max(0,1-Math.max(0,edad-1)/5); // pierde peso con los días
+  return {f:1+(raw-1)*w,raw,s};
+}
+// ---------- visibilidad estimada ----------
+// Sin satélite: parte de la visibilidad habitual del punto y la reduce por lluvia (escorrentía),
+// por el oleaje de las últimas 24 h (remueve el fondo) y por viento entrando; se ajusta con tus registros.
+function refSerie(D){return REF_WAVE.map(k=>D.wave[k]).find(Boolean)}
+function visBase(p){return p.vis||(p.tipo==="barco"?18:12)}
+function visK(pid){
+  const L=logs.filter(x=>x.cala===pid&&x.vis!=null&&x.pred&&x.pred.visEst);
+  if(L.length<3)return {k:1,n:L.length};
+  return {k:Math.max(0.3,Math.min(2.5,median(L.map(x=>x.vis/x.pred.visEst)))),n:L.length};
+}
+function modelFactor(pid,date){
+  const s=SAT[pid];const kd=s&&s.modelo&&s.modelo[date];if(!kd)return null;
+  return {f:Math.max(0.6,Math.min(1.15,Math.pow(0.032/kd,0.7))),kd};
+}
+function visEstim(p,D,i,dayIdx=0){
+  const W=refSerie(D);if(!W)return null;
+  let rain48=0,rain72=0,hmax=0,calma=true;
+  for(let j=Math.max(0,i-72);j<i;j++){const pr=D.precip[j]||0;rain72+=pr;if(j>=i-48)rain48+=pr}
+  for(let j=Math.max(0,i-24);j<=i;j++){const h=W.h[j];if(h==null)continue;const he=p.tipo==="playa"?h*exposure(W.d[j]??p.orient,p):h;if(he>hmax)hmax=he}
+  for(let j=Math.max(0,i-48);j<=i;j++){const h=W.h[j];if(h!=null&&h>=0.3)calma=false}
+  const R=rain48+0.4*(rain72-rain48),playa=p.tipo==="playa";
+  const fR=1/(1+R/(playa?15:40));
+  const fW=playa?Math.exp(-Math.max(0,hmax-0.3)*1.3):Math.exp(-Math.max(0,hmax-0.8)*0.6);
+  const wr=REF_WIND.map(k=>D.wind[k]).find(x=>x&&x.w[i]!=null);let fV=1;
+  if(playa&&wr){const dW=angDiff(wr.d[i],p.orient);if(dW<90&&wr.w[i]*Math.cos(dW*Math.PI/180)>=20)fV=0.85}
+  const fC=calma&&R<2?1.1:1;
+  const sf=satFactor(p.id,dayIdx),fS=sf?sf.f:1,mf=modelFactor(p.id,D.times[i].slice(0,10)),fM=mf?mf.f:1;
+  const K=visK(p.id).k,est=visBase(p)*fR*fW*fV*fC*fS*fM*K,v=Math.max(1,Math.min(30,est));
+  const why=[];
+  if(R>=3)why.push(`${Math.round(R)} mm de lluvia en los últimos días`);
+  if(fW<0.9)why.push(`mar removida (${hmax.toFixed(1)} m${playa?" dentro de la cala":""} en las últimas 24 h)`);
+  if(fV<1)why.push("viento entrando a la cala");
+  if(fC>1)why.push("dos días de calma sin lluvia");
+  if(sf&&Math.abs(sf.raw-1)>=0.08)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}): agua ${sf.raw<1?"más turbia":"más clara"} que la media del mes`);
+  else if(sf)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}): transparencia normal`);
+  if(mf)why.push(mf.f<0.95?`el modelo de Copernicus prevé agua de fondo más turbia (kd ${mf.kd.toFixed(3)})`:mf.f>1.05?`el modelo de Copernicus prevé agua de fondo muy limpia (kd ${mf.kd.toFixed(3)})`:`agua de fondo limpia según el modelo de Copernicus`);
+  const vr=Math.round(v);return {v,cat:vr>=12?0:vr>=6?1:2,txt:vr>=12?"buena":vr>=6?"media":"mala",why,raw:est/K};
 }
 const nameOf=k=>(WAVE_MODELS.find(x=>x[0]===k)||WIND_MODELS.find(x=>x[0]===k)||[k,k])[1];
 
@@ -353,11 +444,11 @@ function render(){
     const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toLocaleDateString("sv-SE");
     const ii=idx.slice(day*4,day*4+4);if(!ii.length)continue;
     const r48=rain48(D,date),sv=ii.map(i=>D.sst[i]).filter(v=>v!=null),ae=aemetFor(cur,date,8);
-    html+=`<tr><td class="day">${DIAS[dt.getDay()]} ${dt.getDate()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${r48>=20?`<span class="vis">visibilidad baja</span>`:""}</td>`;
+    html+=`<tr><td class="day">${DIAS[dt.getDay()]} ${dt.getDate()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td>`;
     ii.forEach(i=>{const hr=+D.times[i].slice(11,13),r=evalAt(cur,i,day);if(!r){html+="<td></td>";return}
       const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
-      const low=r.conf<0.45,sub=cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`;
+      const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
       html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${r.ref.h.toFixed(1)} metros, ${LVTXT[lv]}">${disc?'<span class="flag">A!</span>':""}${r.ref.h.toFixed(1)} m<small>${sub} · ${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
@@ -372,16 +463,18 @@ function detail(D,idx){
   <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>Orilla</th>":""}<th></th></tr></thead><tbody>
   ${r.per.map(p=>`<tr${p.m===r.ref.m?' style="font-weight:600"':""}><td>${nameOf(p.m)}${p.m===r.ref.m?" (referencia)":""}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td>${playa?`<td>${Math.round(p.f*100)} %</td><td>${p.hb.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
   </tbody></table>
+  ${r.ref.comps?`<h3>Componentes del oleaje (ECMWF, como en Windy)</h3><table class="mt"><thead><tr><th></th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}</tr></thead><tbody>${r.ref.comps.map(c=>`<tr><td>${COMP_NOM[c.k]}</td><td>${c.h.toFixed(2)} m · ${(c.t||0).toFixed(1)} s · del ${card(c.d)}</td>${playa?`<td>${Math.round(c.f*100)} %</td><td>${c.e.toFixed(2)} m</td>`:""}</tr>`).join("")}</tbody></table>`:""}
   <dl>
    <dt>Viento (${nameOf(r.wref.m)})</dt><dd>${vientoNombre(r.wref.d)} · ${Math.round(r.wref.w)} km/h del ${card(r.wref.d)}, rachas ${Math.round(r.wref.g||0)}</dd>
-   ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.d,r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
+   ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.domD??r.ref.d,r.ref.comps&&r.ref.f?r.ref.h*r.ref.f/Math.max(0.05,exposure(r.ref.domD??r.ref.d,cur)):r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
    ${r.W.length>1?`<dt>Viento por modelo</dt><dd>${r.W.map(x=>`${nameOf(x.m)} ${Math.round(x.w)}`).join(" · ")}</dd>`:""}
    <dt>AEMET (${A_name()})</dt><dd>${a?`oleaje ${esc(a.txt||"–")}${a.tAgua!=null?` · agua ${a.tAgua} °C`:""}`:"sin dato"}</dd>
    <dt>Temperatura del agua</dt><dd>${D.sst[i]!=null?D.sst[i].toFixed(1)+" °C":"–"}</dd>
    <dt>Lluvia 48 h previas</dt><dd>${Math.round(r48)} mm</dd>
+   ${(()=>{const ve=visEstim(cur,D,i,day);if(!ve)return "";const S=SAT[cur.id];const K=visK(cur.id);return `<dt>Visibilidad estimada</dt><dd><strong>~${Math.round(ve.v)} m</strong> (${ve.txt})${ve.why.length?" · "+esc(ve.why.join(", ")):""}${K.n>=3?` · ajustada con ${K.n} registros`:""}</dd>${S?`<dt>Copernicus</dt><dd>${S.diario?`KD490 ${S.diario.kd.toFixed(3)} m⁻¹ el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`:"sin dato reciente (nubes)"}${S.mes?` · media ${S.mes.mes.slice(5)}/${S.mes.mes.slice(0,4)}: ${S.mes.kd.toFixed(3)}`:""}${S.modelo&&S.modelo[date]?` · previsión del modelo para este día: ${S.modelo[date].toFixed(3)}`:""}</dd>`:""}`})()}
    <dt>Acuerdo entre modelos</dt><dd><strong>${r.agree} de ${r.n}</strong> · confianza ${Math.round(r.conf*100)} %</dd>
   </dl>
-  <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}${r48>=20?"<li>Lluvia reciente: es probable que el agua esté turbia.</li>":""}</ul>
+  <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}</ul>
   <p class="note">Estimación orientativa: no sustituye a mirar el mar en el propio punto ni al criterio del guía o del patrón.</p>`;
 }
 const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre):"sin playa";
@@ -389,14 +482,14 @@ const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre):"sin playa";
 // ---------- registro ----------
 function renderLogs(){
   const L=logs.filter(x=>x.cala===cur.id).slice(-8).reverse();
-  $("lg-list").innerHTML=L.map(x=>`<li>${x.date} ${x.hour}:00 · ${["Fácil","Con dificultad","No se pudo"][x.out]}${x.vis!=null?` · ${x.vis} m vis.`:""}${x.pred?(x.pred.hb!=null?` · previsto ${x.pred.hb.toFixed(2)} m orilla`:x.pred.h!=null?` · previsto ${x.pred.h.toFixed(2)} m`:""):" · sin previsión guardada"}</li>`).join("");
+  $("lg-list").innerHTML=L.map(x=>`<li>${x.date} ${x.hour}:00 · ${["Fácil","Con dificultad","No se pudo"][x.out]}${x.vis!=null?` · ${x.vis} m vis.${x.pred&&x.pred.visEst?` (estimada ${Math.round(x.pred.visEst)})`:""}`:""}${x.pred?(x.pred.hb!=null?` · previsto ${x.pred.hb.toFixed(2)} m orilla`:x.pred.h!=null?` · previsto ${x.pred.h.toFixed(2)} m`:""):" · sin previsión guardada"}</li>`).join("");
 }
 $("lg-date").value=new Date().toLocaleDateString("sv-SE");
 $("lg-save").onclick=()=>{
   const date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=$("lg-vis").value===""?null:+$("lg-vis").value;
   const D=DATA[cur.id];let pred=null;
   if(D){let best=-1,bd=1e9;D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const d=Math.abs(+t.slice(11,13)-hour);if(d<bd){bd=d;best=i}}});
-    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r)pred={h:r.ref.h,hb:r.ref.hb!=null?r.ref.hb/K:null,wl:r.we.l,m:r.ref.m}}}
+    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,hb:r.ref.hb!=null?r.ref.hb/K:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
   const entry={id:newId(),cala:cur.id,date,hour,out,vis,pred};
   logs.push(entry);store.set("calas3-logs",logs);
   srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(()=>{pending.push(entry);store.set("calas3-pending",pending);render()});
@@ -407,12 +500,12 @@ $("lg-export").onclick=()=>{const b=new Blob([JSON.stringify({puntos:PUNTOS,logs
 $("lg-import").onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(Array.isArray(j.logs)){j.logs.forEach(x=>{if(!x.id)x.id=newId();if(!logs.some(l=>l.id===x.id)){logs.push(x);pending.push(x)}});store.set("calas3-logs",logs);store.set("calas3-pending",pending);flushPending()}$("lg-msg").textContent=`Importados. Total: ${logs.length} registros.`;render()}catch(err){$("lg-msg").textContent="El archivo no es un export válido de esta app."}};
 
 // ---------- editor de puntos ----------
-function fillEditor(){$("p-name").value=cur.name;$("p-tipo").value=cur.tipo;$("p-lat").value=cur.lat;$("p-lon").value=cur.lon;$("p-aemet").value=cur.aemet||"";$("p-msg").textContent="";$("p-found").textContent=""}
+function fillEditor(){$("p-vis").value=visBase(cur);$("p-name").value=cur.name;$("p-tipo").value=cur.tipo;$("p-lat").value=cur.lat;$("p-lon").value=cur.lon;$("p-aemet").value=cur.aemet||"";$("p-msg").textContent="";$("p-found").textContent=""}
 $("p-save").onclick=async()=>{
   const lat=+$("p-lat").value,lon=+$("p-lon").value;
   if(!$("p-name").value.trim()||isNaN(lat)||isNaN(lon)||Math.abs(lat)>90||Math.abs(lon)>180){$("p-msg").textContent="Revisa el nombre y las coordenadas (grados decimales, p. ej. 41.8850 y 3.2050).";return}
   const moved=lat!==cur.lat||lon!==cur.lon;
-  Object.assign(cur,{name:$("p-name").value.trim(),tipo:$("p-tipo").value,lat,lon,aemet:$("p-aemet").value.trim()});
+  Object.assign(cur,{name:$("p-name").value.trim(),tipo:$("p-tipo").value,lat,lon,aemet:$("p-aemet").value.trim(),vis:Math.max(2,Math.min(40,+$("p-vis").value||visBase(cur)))});
   saveCfg();$("p-msg").textContent="Punto guardado.";
   if(moved||!DATA[cur.id]){await loadPoint(cur)}
   try{aemetData[cur.id]=await loadAemet(cur)}catch(e){aemetData[cur.id]=null}
@@ -444,13 +537,13 @@ async function connect(){
     serverOK=true;await flushPending();
     logs=await srv("/logs");store.set("calas3-logs",logs);
     const rc=await srv("/config");
-    if(rc&&Array.isArray(rc.puntos)&&rc.puntos.length){PUNTOS=rc.puntos;if(rc.th)Object.assign(th,rc.th);store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);cur=PUNTOS.find(p=>p.id===cur.id)||PUNTOS[0]}
+    if(rc&&Array.isArray(rc.puntos)&&rc.puntos.length){PUNTOS=rc.puntos;if(rc.th){Object.assign(th,rc.th);if(!rc.th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1;saveCfg()}}store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);cur=PUNTOS.find(p=>p.id===cur.id)||PUNTOS[0]}
     else{if(rc&&rc.calas)PUNTOS.forEach(p=>{const o=rc.calas[p.id];if(o){p.orient=o.orient??p.orient;p.aper=o.aper??p.aper}});saveCfg()}
     $("aconn").textContent=`Conectado. ${logs.length} registro(s) sincronizados.`;
   }catch(e){$("aconn").textContent=/PIN/.test(e.message)?"El servidor responde, pero el PIN no es correcto.":`No se ha podido conectar: ${e.message}.`}
 }
 $("asave").onclick=async()=>{api={url:$("aurl").value.trim(),pin:$("apin").value.trim()};store.set("calas3-api",api);await connect();await refreshAemet();await loadAll();};
-async function refreshAemet(){for(const p of PUNTOS){try{aemetData[p.id]=await loadAemet(p)}catch(e){aemetData[p.id]=null}}render()}
+async function refreshAemet(){for(const p of PUNTOS){try{aemetData[p.id]=await loadAemet(p)}catch(e){aemetData[p.id]=null}}render();for(const p of PUNTOS){try{SAT[p.id]=await loadSat(p)}catch(e){}}render()}
 
 // ---------- carga y actualización ----------
 let loading=false;
