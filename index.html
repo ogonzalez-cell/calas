@@ -64,6 +64,7 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .log li{font-size:13px;margin:2px 0}
 details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
 #barco-ctl{display:none}
+.cexp{font-size:13.5px;line-height:1.5;background:var(--foam);border-radius:8px;padding:8px 10px;margin-top:8px}.cexp:empty{display:none}.cexp .cres{font-weight:600}
 .lbl{display:flex;align-items:center;gap:6px;font-weight:500;font-size:14px}.lbl .val{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
 .info{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1px solid var(--muted);background:transparent;color:var(--muted);font:700 12px/18px Georgia,serif;font-style:italic;padding:0;cursor:pointer}
 .tip{font-size:13px;line-height:1.45;color:var(--ink);background:var(--foam);border-left:3px solid var(--posidonia);padding:7px 10px;border-radius:6px;margin:6px 0 4px}
@@ -133,7 +134,8 @@ th.tarde{color:var(--posidonia)}
     <p class="note" id="ptipo"></p>
     <svg class="compass" id="compass" viewBox="-110 -110 220 220" role="img" aria-label="Dibujo de la cala: zona azul, mar abierto; zona marrón, tierra; línea ondulada, de dónde vienen las olas; flecha gris, de dónde viene el viento"></svg>
     <div class="legend"><span id="lg-boca"><i style="background:var(--sea)"></i>Mar abierto (boca)</span><span id="lg-tierra"><i style="background:var(--land)"></i>Tierra</span><span><svg width="24" height="10" aria-hidden="true"><path d="M1 5 Q4 0 7 5 T13 5 T19 5" stroke="var(--waveln)" fill="none" stroke-width="2"/><polygon points="23,5 18,2 18,8" fill="var(--waveln)"/></svg>Olas</span><span><svg width="24" height="10" aria-hidden="true"><line x1="1" y1="5" x2="18" y2="5" stroke="var(--wind)" stroke-width="2.5"/><polygon points="23,5 17,1 17,9" fill="var(--wind)"/></svg>Viento</span></div>
-    <p class="note" style="margin:4px 0 0">Las flechas salen de donde vienen el viento y las olas. Si empiezan en la zona azul, entran en la cala.</p>
+    <div class="cexp" id="cexp" aria-live="polite"></div>
+    <p class="note" style="margin:6px 0 0">Las flechas salen de donde vienen el viento y las olas. Si empiezan en la zona azul, entran en la cala. Toca una casilla para ver otra hora.</p>
     <div id="playa-ctl">
       <div class="ctl"><div class="lbl"><label for="orient">Hacia dónde mira la cala</label><button type="button" class="info" data-tip="t-orient" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-orient"></span></div><p class="tip" id="t-orient" hidden>La dirección hacia la que se abre la boca de la cala, hacia mar abierto (zona azul del dibujo). Las olas y el viento que vienen de ahí entran de lleno; los que llegan desde tierra (zona marrón) no.</p><input type="range" id="orient" min="0" max="359" step="5"></div>
       <div class="ctl"><div class="lbl"><label for="aper">Lo ancha que es la boca</label><button type="button" class="info" data-tip="t-aper" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-aper"></span></div><p class="tip" id="t-aper" hidden>Cuántos grados abre la boca a cada lado de esa dirección. Una cala cerrada entre rocas abre poco (±20°); una playa recta o una punta, mucho (±70°). Cuanto más ancha, más direcciones de mar le afectan.</p><input type="range" id="aper" min="10" max="90" step="5"></div>
@@ -389,12 +391,13 @@ function exposicion(p,wDir,wSpd,sDir,hs){
   const partes=[];
   if(wSpd<12)partes.push(`viento flojo (${vtxt})`);else if(vientoCara)partes.push(`${vn} de cara`);else if(vientoLado)partes.push(`${vn} de lado`);else partes.push(`${vn} de tierra`);
   if(hs<0.3)partes.push("mar en calma");else if(marCara)partes.push(`mar del ${card(sDir)} de frente`);else if(marLado)partes.push(`mar del ${card(sDir)} de lado`);else partes.push(`a resguardo del mar del ${card(sDir)}`);
-  let lv,txt;
-  if((vientoCara&&wSpd>=18)||(marCara&&hs>=0.7)){lv=2;txt="Cala expuesta"}
-  else if(vientoCara||(marCara&&hs>=0.4)||vientoLado&&wSpd>=20||marLado&&hs>=0.7){lv=1;txt="Parcialmente expuesta"}
-  else {lv=0;txt="Cala resguardada"}
+  // se separa lo que hace el viento de lo que hace el mar, para que la etiqueta diga a qué está expuesta
+  const wv=(vientoCara&&wSpd>=18)?2:(vientoCara||(vientoLado&&wSpd>=20))?1:0;
+  const mv=(marCara&&hs>=0.7)?2:((marCara&&hs>=0.4)||(marLado&&hs>=0.7))?1:0;
+  const lv=Math.max(wv,mv),que=wv&&mv?"al viento y al mar":wv?"al viento":"al mar";
+  const txt=lv===2?`Expuesta ${que}`:lv===1?`Algo expuesta ${que}`:"Resguardada";
   if(vientoTierra&&wSpd>=20)partes.push("ojo a la deriva hacia fuera");
-  return {lv,txt,detalle:partes.join(" · ")};
+  return {lv,txt,detalle:partes.join(" · "),wv,mv,vientoCara,vientoLado,vientoTierra,marCara,marLado,fS};
 }
 function expoDia(p,D,ii){
   const r=ii.map(i=>{const ref=REF_WAVE.map(k=>D.wave[k]).find(x=>x&&x.h[i]!=null);const wr=REF_WIND.map(k=>D.wind[k]).find(x=>x&&x.w[i]!=null);if(!ref||!wr)return null;
@@ -578,9 +581,35 @@ function render(){
   $("grid").querySelectorAll(".cell").forEach(b=>b.onclick=()=>{sel=+b.dataset.i;selDay=+b.dataset.day;render()});
   detail(D,idx);renderLogs();
 }
+// Explicación en lenguaje llano de lo que se ve en el dibujo para la hora elegida
+function explica(p,r,dt,hr){
+  const w=r.wref.w||0,g=r.wref.g||0,wd=r.wref.d,sd=r.ref.domD??r.ref.d,h=r.ref.h,T=r.ref.t||0;
+  const vn=vientoNombre(wd),W=`${vn} ${Math.round(w)} km/h del ${card(wd)}${g>=w+10?` (rachas ${Math.round(g)})`:""}`;
+  let lw,lm,res;
+  if(p.tipo==="barco"){
+    lw=w<12?`Viento flojo: ${W}.`:`Viento: ${W}. ${w>=30?"Mar picada para salir en barco.":w>=18?"Algo de marejada.":"Sin problema para la salida."}`;
+    lm=h<0.3?`Mar en calma (${h.toFixed(1)} m).`:`Ola de ${h.toFixed(1)} m del ${card(sd)}${T?` cada ${Math.round(T)} s`:""} en mar abierto.`;
+    res="";
+  }else{
+    const e=exposicion(p,wd,w,sd,h);
+    if(w<12)lw=`Viento flojo (${W}): no afecta a la entrada.`;
+    else if(e.vientoCara)lw=`Viento: ${W}. Sopla hacia dentro de la cala: le entra directo y pica la orilla.`;
+    else if(e.vientoLado)lw=`Viento: ${W}. Entra de lado: algo de picado en la orilla.`;
+    else lw=`Viento: ${W}. Sopla desde tierra: la cala queda resguardada del viento${w>=20?", pero en superficie te empuja mar adentro":""}.`;
+    if(h<0.3)lm=`Mar en calma (${h.toFixed(1)} m).`;
+    else if(e.marCara)lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}${T?` cada ${Math.round(T)} s`:""}. Entra de frente por la boca de la cala.`;
+    else if(e.marLado)lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}. Llega de lado: entra en parte.`;
+    else lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}. Viene de fuera de la boca: la cala queda a resguardo de este mar.`;
+    const rw=e.wv===2?"expuesta al viento":e.wv===1?"algo expuesta al viento":"resguardada del viento";
+    const rm=h<0.3?"con el mar en calma":e.mv===2?"expuesta al mar":e.mv===1?"algo expuesta al mar":"a resguardo del mar";
+    res=`En resumen: ${rw} y ${rm}.`;
+  }
+  return `<b>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00</b><br>💨 ${esc(lw)}<br>🌊 ${esc(lm)}${res?`<br><span class="cres">${esc(res)}</span>`:""}`;
+}
 function detail(D,idx){
-  const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";return}
+  const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";$("cexp").innerHTML="";return}
   const date=D.times[i].slice(0,10),hr=+D.times[i].slice(11,13),dt=new Date(date+"T12:00:00"),a=aemetFor(cur,date,hr),r48=rain48(D,date),playa=cur.tipo==="playa";
+  $("cexp").innerHTML=explica(cur,r,dt,hr);
   $("detail").innerHTML=`<h2>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00${sel===null?" (toca una casilla)":""}</h2>
   <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>Orilla</th>":""}<th></th></tr></thead><tbody>
   ${r.per.map(p=>`<tr${p.m===r.ref.m?' style="font-weight:600"':""}><td>${nameOf(p.m)}${p.m===r.ref.m?" (referencia)":""}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td>${playa?`<td>${Math.round(p.f*100)} %</td><td>${p.hb.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
@@ -588,7 +617,7 @@ function detail(D,idx){
   ${r.ref.comps?`<h3>Componentes del oleaje (Météo-France)</h3><table class="mt"><thead><tr><th></th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}</tr></thead><tbody>${r.ref.comps.map(c=>`<tr><td>${COMP_NOM[c.k]}</td><td>${c.h.toFixed(2)} m · ${(c.t||0).toFixed(1)} s · del ${card(c.d)}</td>${playa?`<td>${Math.round(c.f*100)} %</td><td>${c.e.toFixed(2)} m</td>`:""}</tr>`).join("")}</tbody></table>`:""}
   <dl>
    <dt>Viento (${nameOf(r.wref.m)})</dt><dd>${vientoNombre(r.wref.d)} · ${Math.round(r.wref.w)} km/h del ${card(r.wref.d)}, rachas ${Math.round(r.wref.g||0)}</dd>
-   ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.domD??r.ref.d,r.ref.comps&&r.ref.f?r.ref.h*r.ref.f/Math.max(0.05,exposure(r.ref.domD??r.ref.d,cur)):r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
+   ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.domD??r.ref.d,r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
    ${r.W.length>1?`<dt>Viento por modelo</dt><dd>${r.W.map(x=>`${nameOf(x.m)} ${Math.round(x.w)}`).join(" · ")}</dd>`:""}
    <dt>AEMET (${A_name()})</dt><dd>${a?`oleaje ${esc(a.txt||"–")}${a.tAgua!=null?` · agua ${a.tAgua} °C`:""}`:"sin dato"}</dd>
    ${(()=>{const w=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;return w?`<dt>Tiempo</dt><dd>${w.i} ${w.t}${D.wx.temp[i]!=null?` · ${Math.round(D.wx.temp[i])} °C`:""}</dd>`:""})()}
