@@ -361,7 +361,7 @@ function evalAt(p,i,dayIdx){
   if(we.l>lv)lv=we.l;why.push(...we.why);
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
   const agree=per.filter(x=>x.lv===ref.lv).length;
-  const hs=per.map(x=>x.h),spread=Math.max(...hs)-Math.min(...hs);
+  const hs=per.map(x=>p.tipo==="playa"?(x.he??x.h):x.h),spread=Math.max(...hs)-Math.min(...hs); // en playa, la dispersión que importa es la de la ola que llega a la cala
   const hz=[1,0.95,0.85,0.8,0.7,0.65,0.55][Math.min(6,Math.max(0,dayIdx))];
   const conf=Math.max(0,Math.min(1,(0.5*agree/per.length+0.5*Math.max(0,1-spread/0.6))*hz));
   // prudencia: sin verde si los modelos discrepan o si hay mar en mar abierto que entra en la cala
