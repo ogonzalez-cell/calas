@@ -240,7 +240,12 @@ function addNewDefaults(seenArr){const seen=new Set(seenArr||PUNTOS.map(p=>p.id)
 const FIXES_REV=2,FIXES={blanes:{orient:145,aper:90,prof:"000000000494999999999999999999999999999999999654333100000000000000000000"},tossa:{orient:175,aper:45,prof:"000000000000000444004404009404499999999994111110000000000000000000000000"},sfg:{orient:140,aper:50,prof:"000000000040000044999999999999999999994444444444400444000000000000000000",lat:41.7714,lon:3.0304},vedell:{orient:150,aper:30,prof:"000000000000000444444444999999999999000000000000000000000000000000000000"},begur:{orient:50,aper:10,prof:"000444444999040044444444000000000000000000000000000000000000000000000000"}}; // boca de cada cala calculada sobre la línea de costa de OpenStreetMap (perfilDesdeCosta)
 function applyFixes(rev){if((rev||0)>=FIXES_REV)return false;PUNTOS.forEach(p=>{if(FIXES[p.id])Object.assign(p,FIXES[p.id])});th.fixRev=FIXES_REV;return true}
 {const c1=addNewDefaults(th.seenDef),c2=applyFixes(th.fixRev);if(c1||c2)store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th)}
-let api=store.get("calas3-api",{url:"",pin:""});
+const DEFAULT_API="https://buceo-api.tk97b4vjdk.workers.dev"; // tu servidor de Cloudflare: solo falta el PIN
+let api=store.get("calas3-api",{url:"",pin:""});if(!api.url){api.url=DEFAULT_API;store.set("calas3-api",api)}
+// Pide el PIN una sola vez por dispositivo y sube lo pendiente
+async function pedirPin(){const pin=prompt("PIN del servidor para subir tus registros (solo se pide una vez en este dispositivo):");if(!pin)return false;
+  api={url:api.url||DEFAULT_API,pin:pin.trim()};store.set("calas3-api",api);await connect();
+  if(serverOK){render();refreshAemet()}else alert("No se ha podido conectar. Revisa el PIN.");return serverOK}
 let logs=store.get("calas3-logs",[]);
 let pending=store.get("calas3-pending",[]);
 let serverOK=false;
@@ -592,7 +597,8 @@ function render(){
   if(!D){$("status").textContent=loading?"Cargando previsiones…":"Sin conexión y sin previsión guardada todavía para este punto: ábrela una vez con cobertura.";$("grid").innerHTML="";$("detail").innerHTML="";compass(null);return}
   const A=aemetData[cur.id],nW=Object.keys(D.wave).length,nV=Object.keys(D.wind).length;
   $("status").innerHTML=(D.live?`<span class="upd">Actualizado ${fmtTime(D.fetchedAt)}</span> · ${nW} modelos de oleaje y ${nV} de viento.`:`Sin conexión: previsión guardada ${fmtTime(D.savedAt)}.`)+
-    (A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?" AEMET sin datos ahora.":" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir.`:"");
+    (A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?" AEMET sin datos ahora.":" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir. <button class="btn ghost" id="upnow" style="padding:2px 9px;font-size:13px">Subir ahora</button>`:"");
+  if($("upnow"))$("upnow").onclick=async()=>{if(serverOK){await flushPending();render()}else await pedirPin()};
   const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");
   let html=`<thead><tr>${HOURS.map(h=>`<th class="${h>13?"tarde":""}">${h}h</th>`).join("")}</tr></thead><tbody>`;
   for(let day=0;day<7;day++){
@@ -676,7 +682,7 @@ $("lg-save").onclick=()=>{
     if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,he:r.ref.he!=null?r.ref.he/K:null,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
   const entry={id:newId(),cala:cur.id,date,hour,out,vis,pred};
   logs.push(entry);store.set("calas3-logs",logs);
-  srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(()=>{pending.push(entry);store.set("calas3-pending",pending);render()});
+  srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(async()=>{pending.push(entry);store.set("calas3-pending",pending);render();if(!serverOK)await pedirPin()});
   $("lg-msg").textContent=pred?"Registro guardado con la previsión de ese momento.":"Registro guardado. No había previsión para esa fecha (solo hasta 3 días atrás), así que no cuenta para el ajuste.";
   render();
 };
