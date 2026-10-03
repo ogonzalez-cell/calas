@@ -137,6 +137,7 @@ th.tarde{color:var(--posidonia)}
     <div class="cexp" id="cexp" aria-live="polite"></div>
     <p class="note" style="margin:6px 0 0">Las flechas salen de donde vienen el viento y las olas. Si empiezan en la zona azul, entran en la cala. Toca una casilla para ver otra hora.</p>
     <div id="playa-ctl">
+      <p class="note" id="profnote" style="margin:8px 0 0"></p>
       <div class="ctl"><div class="lbl"><label for="orient">Hacia dónde mira la cala</label><button type="button" class="info" data-tip="t-orient" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-orient"></span></div><p class="tip" id="t-orient" hidden>La dirección hacia la que se abre la boca de la cala, hacia mar abierto (zona azul del dibujo). Las olas y el viento que vienen de ahí entran de lleno; los que llegan desde tierra (zona marrón) no.</p><input type="range" id="orient" min="0" max="359" step="5"></div>
       <div class="ctl"><div class="lbl"><label for="aper">Lo ancha que es la boca</label><button type="button" class="info" data-tip="t-aper" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-aper"></span></div><p class="tip" id="t-aper" hidden>Cuántos grados abre la boca a cada lado de esa dirección. Una cala cerrada entre rocas abre poco (±20°); una playa recta o una punta, mucho (±70°). Cuanto más ancha, más direcciones de mar le afectan.</p><input type="range" id="aper" min="10" max="90" step="5"></div>
       <details class="adv"><summary>Límites del semáforo</summary>
@@ -209,13 +210,13 @@ const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROM
 const REF_WAVE=["ecmwf_wam025","meteofrance_wave","ncep_gfswave025","ewam","gwam"]; // orden de preferencia como referencia
 const REF_WIND=["ecmwf_ifs025","icon_eu","meteofrance_arpege_europe","gfs_seamless","meteofrance_arome_france_hd"];
 const DEFAULT_PUNTOS=[
- {id:"blanes",name:"Blanes · Punta de Santa Anna",tipo:"playa",lat:41.6720,lon:2.8020,orient:135,aper:75,aemet:"1702303"},
- {id:"tossa",name:"Tossa · Mar Menuda",tipo:"playa",lat:41.7215,lon:2.9405,orient:180,aper:25,aemet:"1720207"},
- {id:"sfg",name:"Sant Feliu · Port Salvi",tipo:"playa",lat:41.7714,lon:3.0304,orient:135,aper:45,aemet:"1716002"},
+ {id:"blanes",name:"Blanes · Punta de Santa Anna",tipo:"playa",lat:41.6720,lon:2.8020,orient:145,aper:90,prof:"000000000494999999999999999999999999999999999654333100000000000000000000",aemet:"1702303"},
+ {id:"tossa",name:"Tossa · Mar Menuda",tipo:"playa",lat:41.7215,lon:2.9405,orient:175,aper:45,prof:"000000000000000444004404009404499999999994111110000000000000000000000000",aemet:"1720207"},
+ {id:"sfg",name:"Sant Feliu · Port Salvi",tipo:"playa",lat:41.7714,lon:3.0304,orient:140,aper:50,prof:"000000000040000044999999999999999999994444444444400444000000000000000000",aemet:"1716002"},
  {id:"boreas",name:"Palamós · Boreas",tipo:"barco",lat:41.8271,lon:3.1284,orient:120,aper:45,aemet:"1711804"},
- {id:"vedell",name:"Palamós · Morro del Vedell",tipo:"playa",lat:41.8474,lon:3.1377,orient:125,aper:45,aemet:"1711804"},
+ {id:"vedell",name:"Palamós · Morro del Vedell",tipo:"playa",lat:41.8474,lon:3.1377,orient:150,aper:30,prof:"000000000000000444444444999999999999000000000000000000000000000000000000",aemet:"1711804"},
  {id:"ullastres",name:"Llafranc · Ullastres",tipo:"barco",lat:41.8850,lon:3.2050,orient:150,aper:45,aemet:"1711703"},
- {id:"begur",name:"Begur · Sa Tuna",tipo:"playa",lat:41.9605,lon:3.2320,orient:65,aper:30,aemet:"1701303"}
+ {id:"begur",name:"Begur · Sa Tuna",tipo:"playa",lat:41.9605,lon:3.2320,orient:50,aper:10,prof:"000444444999040044444444000000000000000000000000000000000000000000000000",aemet:"1701303"}
 ];
 
 // ---------- utilidades ----------
@@ -236,7 +237,7 @@ if(!PUNTOS){PUNTOS=JSON.parse(JSON.stringify(DEFAULT_PUNTOS));const old=store.ge
 const th=Object.assign({go:0.7,warn:1.0,bgo:0.8,bwarn:1.2},store.get("calas4-th",{}));if(!th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1}
 if(!th.v7){th.go=0.7;th.warn=1.0;th.v7=1} // v7: los límites se aplican a la ola en mar abierto (número grande)
 function addNewDefaults(seenArr){const seen=new Set(seenArr||PUNTOS.map(p=>p.id));let ch=false;DEFAULT_PUNTOS.forEach(d=>{if(!seen.has(d.id)){seen.add(d.id);if(!PUNTOS.some(p=>p.id===d.id)){PUNTOS.push(JSON.parse(JSON.stringify(d)));ch=true}}});th.seenDef=[...seen];return ch}
-const FIXES_REV=1,FIXES={blanes:{orient:135,aper:75},tossa:{orient:180,aper:25},sfg:{orient:135,aper:45,lat:41.7714,lon:3.0304},vedell:{orient:125,aper:45},begur:{orient:65,aper:30}}; // orientaciones medidas sobre la línea de costa de OpenStreetMap
+const FIXES_REV=2,FIXES={blanes:{orient:145,aper:90,prof:"000000000494999999999999999999999999999999999654333100000000000000000000"},tossa:{orient:175,aper:45,prof:"000000000000000444004404009404499999999994111110000000000000000000000000"},sfg:{orient:140,aper:50,prof:"000000000040000044999999999999999999994444444444400444000000000000000000",lat:41.7714,lon:3.0304},vedell:{orient:150,aper:30,prof:"000000000000000444444444999999999999000000000000000000000000000000000000"},begur:{orient:50,aper:10,prof:"000444444999040044444444000000000000000000000000000000000000000000000000"}}; // boca de cada cala calculada sobre la línea de costa de OpenStreetMap (perfilDesdeCosta)
 function applyFixes(rev){if((rev||0)>=FIXES_REV)return false;PUNTOS.forEach(p=>{if(FIXES[p.id])Object.assign(p,FIXES[p.id])});th.fixRev=FIXES_REV;return true}
 {const c1=addNewDefaults(th.seenDef),c2=applyFixes(th.fixRev);if(c1||c2)store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th)}
 let api=store.get("calas3-api",{url:"",pin:""});
@@ -299,7 +300,35 @@ async function loadAemet(p){
 }
 
 // ---------- modelo ----------
-function exposure(dir,p,T){const d=angDiff(dir,p.orient),a=p.aper;let f;if(d<=a)f=1-0.4*(d/a)**2;else if(d<=a+60)f=0.6-0.45*((d-a)/60);else f=0.12;
+// ---------- boca de la cala calculada sobre la costa real (OpenStreetMap) ----------
+// prof: 72 cifras, una cada 5° empezando en el N: 9 = mar abierto, 0 = tierra; intermedios = islotes o bahía corta.
+// La ola que entra se calcula repartiendo la energía del oleaje en direcciones (función de Mitsuyasu-Goda, cos^2s)
+// y quedándose con la parte que encuentra el camino abierto: s=10 mar de viento, s=25 mar de fondo.
+function kProf(prof,dir,s){let n=0,d=0;for(let k=0;k<72;k++){const dl=((k*5-dir+540)%360-180)*Math.PI/180,w=Math.pow(Math.cos(dl/2),2*s);n+=w*(+prof[k])/9;d+=w}return Math.sqrt(n/d)}
+function bocaDe(prof){let x=0,y=0,n=0;const open=[];for(let k=0;k<72;k++)if(+prof[k]>=5){open.push(k*5);x+=Math.sin(k*5*Math.PI/180);y+=Math.cos(k*5*Math.PI/180);n++}if(!n)return null;const o=(Math.atan2(x,y)*180/Math.PI+360)%360;const a=Math.max(...open.map(d=>angDiff(d,o)))+2.5;return {orient:Math.round(o/5)*5%360,aper:Math.min(90,Math.max(10,Math.round(a/5)*5))}}
+function perfilDesdeCosta(ways,lat,lon){
+  const kx=111.32*Math.cos(lat*Math.PI/180),ky=110.57,segs=[];
+  for(const w of ways)for(let i=1;i<w.length;i++){const a=[(w[i-1][1]-lon)*kx,(w[i-1][0]-lat)*ky],b=[(w[i][1]-lon)*kx,(w[i][0]-lat)*ky];if(Math.min(Math.hypot(...a),Math.hypot(...b))<9)segs.push([...a,...b])}
+  const hitsFrom=(ox,oy,deg,max)=>{const dx=Math.sin(deg*Math.PI/180),dy=Math.cos(deg*Math.PI/180),h=[];for(const [ax0,ay0,bx0,by0] of segs){const ax=ax0-ox,ay=ay0-oy,ex=bx0-ax0,ey=by0-ay0,den=dx*ey-dy*ex;if(Math.abs(den)<1e-12)continue;const t=(ax*ey-ay*ex)/den,u=(ax*dy-ay*dx)/den;if(t>0.001&&t<=max&&u>=0&&u<1)h.push(t)}return h.sort((a,b)=>a-b)};
+  const dSeg=(px,py)=>{let m=1e9;for(const [ax,ay,bx,by] of segs){const ex=bx-ax,ey=by-ay,l=ex*ex+ey*ey;let t=l?((px-ax)*ex+(py-ay)*ey)/l:0;t=Math.max(0,Math.min(1,t));const d=Math.hypot(px-ax-t*ex,py-ay-t*ey);if(d<m)m=d}return m};
+  const enMar=(ox,oy)=>{let v=0;for(let d=80;d<=160;d+=10)if(hitsFrom(ox,oy,d,8).length%2===0)v++;return v>=7}; // a 8 km al E-SE siempre hay mar abierto en la Costa Brava
+  let o=null;for(let r=0;r<=0.3&&!o;r+=0.01){for(let a=0;a<360&&!o;a+=(r?10:360)){const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);if(dSeg(x,y)>=0.015&&enMar(x,y))o=[x,y]}}
+  if(!o)return null;
+  const T=[];for(let k=0;k<72;k++){const h=hitsFrom(o[0],o[1],k*5,8);let t;
+    if(!h.length||h[0]>=3)t=1;
+    else if(h.length>=2&&h[1]-h[0]<=0.15&&(h.length===2||h[2]-h[1]>=1))t=0.4;
+    else if(h[0]>=0.3)t=Math.min(1,(h[0]-0.3)/2.7)*0.8;
+    else t=0;
+    T.push(Math.round(t*9))}
+  return T.join("");
+}
+async function perfilCosta(lat,lon){
+  const q=`[out:json][timeout:40];way["natural"="coastline"](around:9000,${lat},${lon});out geom;`;
+  const r=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(q)});
+  if(!r.ok)throw new Error("overpass "+r.status);
+  const j=await r.json();return perfilDesdeCosta(j.elements.map(w=>w.geometry.map(p=>[p.lat,p.lon])),lat,lon);
+}
+function exposure(dir,p,T){if(p.prof)return Math.max(0.03,kProf(p.prof,dir,T&&T>=8?25:10));const d=angDiff(dir,p.orient),a=p.aper;let f;if(d<=a)f=1-0.4*(d/a)**2;else if(d<=a+60)f=0.6-0.45*((d-a)/60);else f=0.12;
   if(T&&T>=7&&d<=a+100)f=Math.max(f,Math.min(0.4,0.2+0.04*(T-7))); // el mar de fondo largo rodea las puntas
   return f}
 const breaker=(H,T)=>H<0.05||!T?0:0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4);
@@ -316,7 +345,7 @@ function windEval(w,g,d,p){
     if(g>=55)up(2,`Rachas de ${Math.round(g)} km/h`);else if(g>=40)up(1,`Rachas de ${Math.round(g)} km/h`);
     return {l,why,on:0,off:0};
   }
-  const dW=angDiff(d,p.orient),on=dW<90?w*Math.cos(dW*Math.PI/180):0,off=dW>90?w*Math.cos((180-dW)*Math.PI/180):0;
+  const dW=angDiff(d,p.orient),kw=p.prof?kProf(p.prof,d,10):null,on=kw!=null?(kw>=0.3?w*kw:0):(dW<90?w*Math.cos(dW*Math.PI/180):0),off=kw!=null?(kw<0.15?w*(1-kw):0):(dW>90?w*Math.cos((180-dW)*Math.PI/180):0);
   if(on>=30)up(2,`Viento entrando a la cala de ${Math.round(on)} km/h`);else if(on>=20)up(1,`Viento entrando a la cala de ${Math.round(on)} km/h: picado en la orilla`);
   if(off>=25)up(1,`Viento de tierra de ${Math.round(off)} km/h: deriva hacia fuera en superficie`);
   if(g>=60)up(2,`Rachas de ${Math.round(g)} km/h`);else if(g>=45)up(1,`Rachas de ${Math.round(g)} km/h`);
@@ -382,8 +411,8 @@ function exposicion(p,wDir,wSpd,sDir,hs){
     const lv=wSpd>=30||hs>=1.2?2:wSpd>=18||hs>=0.8?1:0;
     return {lv,txt:lv===2?"Mar movida":lv===1?"Mar algo movida":"Mar tranquila",detalle:`${vtxt} · ola ${hs.toFixed(1)} m del ${card(sDir)}`};
   }
-  const dW=angDiff(wDir,p.orient),fS=exposure(sDir,p);
-  const vientoCara=wSpd>=12&&dW<=p.aper+20,vientoLado=wSpd>=12&&!vientoCara&&dW<=110,vientoTierra=dW>110;
+  const dW=angDiff(wDir,p.orient),fS=exposure(sDir,p),kw=p.prof?kProf(p.prof,wDir,10):null;
+  const vientoCara=wSpd>=12&&(kw!=null?kw>=0.6:dW<=p.aper+20),vientoLado=wSpd>=12&&!vientoCara&&(kw!=null?kw>=0.3:dW<=110),vientoTierra=kw!=null?kw<0.3:dW>110;
   const marCara=fS>=0.75&&hs>=0.3,marLado=fS>=0.35&&fS<0.75&&hs>=0.3;
   const partes=[];
   if(wSpd<12)partes.push(`viento flojo (${vtxt})`);else if(vientoCara)partes.push(`${vn} de cara`);else if(vientoLado)partes.push(`${vn} de lado`);else partes.push(`${vn} de tierra`);
@@ -486,6 +515,8 @@ function controls(){
   $("gnote").textContent=playa?"Número grande: ola que llega a la cala, calculada con la ola en mar abierto (ECMWF, como Windy) y hacia dónde mira la cala. Debajo: ola en mar abierto y viento.":"Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, periodo y viento.";
   $("ptipo").textContent=playa?"Entrada desde playa: el color sale de la ola que llega a la cala (el número grande), no de la de mar abierto. Empeora si el viento entra en la cala, hay mar de fondo largo, tormenta o los modelos no coinciden.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
   $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;$("bgo").value=th.bgo;$("bwarn").value=th.bwarn;
+  ["orient","aper"].forEach(k=>$(k).closest(".ctl").style.display=cur.prof?"none":"");
+  $("profnote").textContent=cur.prof?`Boca calculada sobre la línea de costa real (OpenStreetMap): mira al ${card(cur.orient)}. Lo que entra de cada dirección sale de esa geometría y de cómo se abre el oleaje al pasar entre las puntas.`:"Boca ajustada a mano. Al guardar el punto en «Editar puntos» se calcula sola sobre la costa real.";
   $("v-orient").textContent=`${cur.orient}° (${card(cur.orient)})`;$("v-aper").textContent=`±${cur.aper}°`;
   $("v-tgo").textContent=`${(+th.go).toFixed(2)} m`;$("v-twarn").textContent=`${(+th.warn).toFixed(2)} m`;$("v-bgo").textContent=`${(+th.bgo).toFixed(2)} m`;$("v-bwarn").textContent=`${(+th.bwarn).toFixed(2)} m`;
   const K=learnedK(cur.id);
@@ -505,7 +536,9 @@ function waveLine(deg,r1,r2,color,w){const a=(deg-90)*Math.PI/180,ca=Math.cos(a)
 function compass(r){
   const playa=cur.tipo==="playa";
   let s=`<defs><clipPath id="cclip"><circle r="96"/></clipPath></defs>`;
-  if(playa){const a1=cur.orient-cur.aper,a2=cur.orient+cur.aper,[sx,sy]=pt(a1,140),[ex,ey]=pt(a2,140);
+  if(playa&&cur.prof){s+=`<circle r="96" fill="var(--land)"/>`;
+    for(let k=0;k<72;k++){const v=+cur.prof[k];if(!v)continue;const [sx,sy]=pt(k*5-2.6,140),[ex,ey]=pt(k*5+2.6,140);s+=`<path clip-path="url(#cclip)" d="M0 0 L${sx} ${sy} A140 140 0 0 1 ${ex} ${ey} Z" fill="var(--sea)" opacity="${v>=9?1:0.3+0.5*v/9}"/>`}}
+  else if(playa){const a1=cur.orient-cur.aper,a2=cur.orient+cur.aper,[sx,sy]=pt(a1,140),[ex,ey]=pt(a2,140);
     s+=`<circle r="96" fill="var(--land)"/><path clip-path="url(#cclip)" d="M0 0 L${sx} ${sy} A140 140 0 ${cur.aper*2>180?1:0} 1 ${ex} ${ey} Z" fill="var(--sea)"/>`}
   else s+=`<circle r="96" fill="var(--sea)"/>`;
   s+=`<circle r="96" fill="none" stroke="var(--line)" stroke-width="1.5"/>`;
@@ -657,7 +690,9 @@ $("p-save").onclick=async()=>{
   if(!$("p-name").value.trim()||isNaN(lat)||isNaN(lon)||Math.abs(lat)>90||Math.abs(lon)>180){$("p-msg").textContent="Revisa el nombre y las coordenadas (grados decimales, p. ej. 41.8850 y 3.2050).";return}
   const moved=lat!==cur.lat||lon!==cur.lon;
   Object.assign(cur,{name:$("p-name").value.trim(),tipo:$("p-tipo").value,lat,lon,aemet:$("p-aemet").value.trim(),vis:Math.max(2,Math.min(40,+$("p-vis").value||visBase(cur)))});
-  saveCfg();$("p-msg").textContent="Punto guardado.";
+  if(cur.tipo==="playa"&&(moved||!cur.prof)){$("p-msg").textContent="Calculando la boca de la cala sobre la costa real…";
+    try{const pr=await perfilCosta(lat,lon);if(pr&&/[5-9]/.test(pr)){cur.prof=pr;Object.assign(cur,bocaDe(pr)||{})}else delete cur.prof}catch(e){if(moved)delete cur.prof}}
+  saveCfg();$("p-msg").textContent=cur.tipo==="playa"?(cur.prof?"Punto guardado. Boca calculada sobre la costa real.":"Punto guardado. No he podido calcular la boca (sin conexión o el punto no está junto al mar): ajústala a mano."):"Punto guardado.";
   if(moved||!DATA[cur.id]){await loadPoint(cur)}
   try{aemetData[cur.id]=await loadAemet(cur)}catch(e){aemetData[cur.id]=null}
   render();
