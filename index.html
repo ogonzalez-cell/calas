@@ -192,6 +192,7 @@ const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROM
 const REF_WAVE=["ecmwf_wam025","meteofrance_wave","ncep_gfswave025","ewam","gwam"]; // orden de preferencia como referencia
 const REF_WIND=["ecmwf_ifs025","icon_eu","meteofrance_arpege_europe","gfs_seamless","meteofrance_arome_france_hd"];
 const DEFAULT_PUNTOS=[
+ {id:"blanes",name:"Blanes · Punta de Santa Anna",tipo:"playa",lat:41.6720,lon:2.8020,orient:170,aper:50,aemet:"1702303"},
  {id:"tossa",name:"Tossa · Mar Menuda",tipo:"playa",lat:41.7215,lon:2.9405,orient:110,aper:45,aemet:"1720207"},
  {id:"sfg",name:"Sant Feliu · Port Salvi",tipo:"playa",lat:41.7765,lon:3.0400,orient:150,aper:40,aemet:"1716002"},
  {id:"boreas",name:"Palamós · Boreas",tipo:"barco",lat:41.8271,lon:3.1284,orient:120,aper:45,aemet:"1711804"},
@@ -216,6 +217,8 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 let PUNTOS=store.get("calas4-puntos",null);
 if(!PUNTOS){PUNTOS=JSON.parse(JSON.stringify(DEFAULT_PUNTOS));const old=store.get("calas3-cfg",{});PUNTOS.forEach(p=>{if(old[p.id]){p.orient=old[p.id].orient??p.orient;p.aper=old[p.id].aper??p.aper}})}
 const th=Object.assign({go:0.7,warn:1.0,bgo:0.8,bwarn:1.2},store.get("calas4-th",{}));if(!th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1}
+function addNewDefaults(seenArr){const seen=new Set(seenArr||PUNTOS.map(p=>p.id));let ch=false;DEFAULT_PUNTOS.forEach(d=>{if(!seen.has(d.id)){seen.add(d.id);if(!PUNTOS.some(p=>p.id===d.id)){PUNTOS.push(JSON.parse(JSON.stringify(d)));ch=true}}});th.seenDef=[...seen];return ch}
+if(addNewDefaults(th.seenDef))store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);
 let api=store.get("calas3-api",{url:"",pin:""});
 let logs=store.get("calas3-logs",[]);
 let pending=store.get("calas3-pending",[]);
@@ -578,7 +581,7 @@ async function connect(){
     serverOK=true;await flushPending();
     logs=await srv("/logs");store.set("calas3-logs",logs);
     const rc=await srv("/config");
-    if(rc&&Array.isArray(rc.puntos)&&rc.puntos.length){PUNTOS=rc.puntos;if(rc.th){Object.assign(th,rc.th);if(!rc.th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1;saveCfg()}}store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);cur=PUNTOS.find(p=>p.id===cur.id)||PUNTOS[0]}
+    if(rc&&Array.isArray(rc.puntos)&&rc.puntos.length){PUNTOS=rc.puntos;if(rc.th){Object.assign(th,rc.th);if(!rc.th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1;saveCfg()}}store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);if(addNewDefaults(rc.th&&rc.th.seenDef))saveCfg();cur=PUNTOS.find(p=>p.id===cur.id)||PUNTOS[0]}
     else{if(rc&&rc.calas)PUNTOS.forEach(p=>{const o=rc.calas[p.id];if(o){p.orient=o.orient??p.orient;p.aper=o.aper??p.aper}});saveCfg()}
     $("aconn").textContent=`Conectado. ${logs.length} registro(s) sincronizados.`;
   }catch(e){$("aconn").textContent=/PIN/.test(e.message)?"El servidor responde, pero el PIN no es correcto.":`No se ha podido conectar: ${e.message}.`}
