@@ -15,10 +15,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--abyss:#0E2A3A;--posidonia:#2F5D50;--foam:#EEF4F2;--paper:#FFFFFF;--sand:#D8C7A1;--ink:#14232B;--muted:#5B6E74;--line:#C9D6D3;--go:#2E9E6A;--warn:#E0A526;--stop:#C9412F;--swell:#1F6FA8;--wind:#7A8A90;
+:root{--abyss:#0E2A3A;--posidonia:#2F5D50;--foam:#EEF4F2;--paper:#FFFFFF;--sand:#D8C7A1;--ink:#14232B;--muted:#5B6E74;--line:#C9D6D3;--go:#2E9E6A;--warn:#E0A526;--stop:#C9412F;--swell:#1F6FA8;--wind:#3E4C52;--sea:#A9D3EE;--waveln:#0B3C5D;--land:#D9C49A;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--foam:#0B1D27;--paper:#112836;--ink:#E4EEEC;--muted:#93A7AC;--line:#22414F;--sand:#6E6247;--abyss:#081620;--swell:#5AA8DD;--wind:#A2B1B6}}
-:root[data-theme="dark"]{--foam:#0B1D27;--paper:#112836;--ink:#E4EEEC;--muted:#93A7AC;--line:#22414F;--sand:#6E6247;--abyss:#081620;--swell:#5AA8DD;--wind:#A2B1B6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--foam:#0B1D27;--paper:#112836;--ink:#E4EEEC;--muted:#93A7AC;--line:#22414F;--sand:#6E6247;--abyss:#081620;--swell:#5AA8DD;--wind:#C3D0D4;--sea:#1D5878;--waveln:#DDF0FF;--land:#6E6247}}
+:root[data-theme="dark"]{--foam:#0B1D27;--paper:#112836;--ink:#E4EEEC;--muted:#93A7AC;--line:#22414F;--sand:#6E6247;--abyss:#081620;--swell:#5AA8DD;--wind:#C3D0D4;--sea:#1D5878;--waveln:#DDF0FF;--land:#6E6247}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
 body{margin:0;background:var(--foam);color:var(--ink);font:400 15px/1.5 Barlow,"Segoe UI",Arial,sans-serif}
 header{background:var(--abyss);color:#EEF4F2;padding:18px 20px 0}
@@ -62,6 +62,11 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .log li{font-size:13px;margin:2px 0}
 details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
 #barco-ctl{display:none}
+.lbl{display:flex;align-items:center;gap:6px;font-weight:500;font-size:14px}.lbl .val{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.info{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1px solid var(--muted);background:transparent;color:var(--muted);font:700 12px/18px Georgia,serif;font-style:italic;padding:0;cursor:pointer}
+.tip{font-size:13px;line-height:1.45;color:var(--ink);background:var(--foam);border-left:3px solid var(--posidonia);padding:7px 10px;border-radius:6px;margin:6px 0 4px}
+details.adv{margin-top:6px}details.adv summary{font:600 15px "Barlow Condensed",sans-serif;color:var(--posidonia)}
+.legend svg{vertical-align:-1px;margin-right:5px}
 .upd{font-variant-numeric:tabular-nums}
 .expo{display:inline-block;font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;margin-top:3px}
 .expo.e0{background:#D6EFE3;color:#1D6B47}.expo.e1{background:#F7E7B8;color:#6B4E00}.expo.e2{background:#F3D2CC;color:#8A2A1D}
@@ -122,24 +127,29 @@ th.tarde{color:var(--posidonia)}
   <section class="panel o1" aria-labelledby="h-cala">
     <h2 id="h-cala">Punto</h2>
     <p class="note" id="ptipo"></p>
-    <svg class="compass" id="compass" viewBox="-110 -110 220 220" role="img" aria-label="Rosa de los vientos con la apertura del punto"></svg>
-    <div class="legend"><span id="lg-boca"><i style="background:var(--sand)"></i>Boca de la cala</span><span><i style="background:var(--swell)"></i>Oleaje</span><span><i style="background:var(--wind)"></i>Viento</span></div>
+    <svg class="compass" id="compass" viewBox="-110 -110 220 220" role="img" aria-label="Dibujo de la cala: zona azul, mar abierto; zona marrón, tierra; línea ondulada, de dónde vienen las olas; flecha gris, de dónde viene el viento"></svg>
+    <div class="legend"><span id="lg-boca"><i style="background:var(--sea)"></i>Mar abierto (boca)</span><span id="lg-tierra"><i style="background:var(--land)"></i>Tierra</span><span><svg width="24" height="10" aria-hidden="true"><path d="M1 5 Q4 0 7 5 T13 5 T19 5" stroke="var(--waveln)" fill="none" stroke-width="2"/><polygon points="23,5 18,2 18,8" fill="var(--waveln)"/></svg>Olas</span><span><svg width="24" height="10" aria-hidden="true"><line x1="1" y1="5" x2="18" y2="5" stroke="var(--wind)" stroke-width="2.5"/><polygon points="23,5 17,1 17,9" fill="var(--wind)"/></svg>Viento</span></div>
+    <p class="note" style="margin:4px 0 0">Las flechas salen de donde vienen el viento y las olas. Si empiezan en la zona azul, entran en la cala.</p>
     <div id="playa-ctl">
-      <div class="ctl"><label for="orient">Hacia dónde se abre <span id="v-orient"></span></label><input type="range" id="orient" min="0" max="359" step="5"></div>
-      <div class="ctl"><label for="aper">Apertura (± grados) <span id="v-aper"></span></label><input type="range" id="aper" min="10" max="90" step="5"></div>
-      <div class="ctl"><label for="tgo">Rompiente máx. en verde <span id="v-tgo"></span></label><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
-      <div class="ctl"><label for="twarn">Rompiente máx. en ámbar <span id="v-twarn"></span></label><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="orient">Hacia dónde mira la cala</label><button type="button" class="info" data-tip="t-orient" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-orient"></span></div><p class="tip" id="t-orient" hidden>La dirección hacia la que se abre la boca de la cala, hacia mar abierto (zona azul del dibujo). Las olas y el viento que vienen de ahí entran de lleno; los que llegan desde tierra (zona marrón) no.</p><input type="range" id="orient" min="0" max="359" step="5"></div>
+      <div class="ctl"><div class="lbl"><label for="aper">Lo ancha que es la boca</label><button type="button" class="info" data-tip="t-aper" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-aper"></span></div><p class="tip" id="t-aper" hidden>Cuántos grados abre la boca a cada lado de esa dirección. Una cala cerrada entre rocas abre poco (±20°); una playa recta o una punta, mucho (±70°). Cuanto más ancha, más direcciones de mar le afectan.</p><input type="range" id="aper" min="10" max="90" step="5"></div>
+      <details class="adv"><summary>Límites del semáforo</summary>
+      <div class="ctl"><div class="lbl"><label for="tgo">Ola en la orilla: verde hasta</label><button type="button" class="info" data-tip="t-tgo" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-tgo"></span></div><p class="tip" id="t-tgo" hidden>La app calcula la ola que romperá en la orilla, donde entras y sales andando. Si no pasa de este valor, la casilla sale en verde: entrada fácil.</p><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="twarn">Ola en la orilla: rojo desde</label><button type="button" class="info" data-tip="t-twarn" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-twarn"></span></div><p class="tip" id="t-twarn" hidden>Entre el límite verde y este valor sale ámbar: se puede, con cuidado. Por encima, rojo: entrar o salir es peligroso.</p><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
+      </details>
     </div>
     <div id="barco-ctl">
-      <div class="ctl"><label for="bgo">Ola máx. en verde <span id="v-bgo"></span></label><input type="range" id="bgo" min="0.3" max="1.5" step="0.05"></div>
-      <div class="ctl"><label for="bwarn">Ola máx. en ámbar <span id="v-bwarn"></span></label><input type="range" id="bwarn" min="0.5" max="2.5" step="0.05"></div>
+      <details class="adv"><summary>Límites del semáforo</summary>
+      <div class="ctl"><div class="lbl"><label for="bgo">Ola en mar abierto: verde hasta</label><button type="button" class="info" data-tip="t-bgo" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-bgo"></span></div><p class="tip" id="t-bgo" hidden>En salidas en barco cuenta la ola en mar abierto. Si no pasa de este valor, verde.</p><input type="range" id="bgo" min="0.3" max="1.5" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="bwarn">Ola en mar abierto: rojo desde</label><button type="button" class="info" data-tip="t-bwarn" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-bwarn"></span></div><p class="tip" id="t-bwarn" hidden>Entre el límite verde y este valor, ámbar. Por encima, rojo.</p><input type="range" id="bwarn" min="0.5" max="2.5" step="0.05"></div>
+      </details>
     </div>
     <p class="note" id="kinfo"></p>
   </section>
 
   <section class="panel o3" aria-labelledby="h-log">
     <h2 id="h-log">Registrar inmersión</h2>
-    <p class="note">Anota cómo fue y la visibilidad real. Con 3 o más registros por punto, la app ajusta sola el oleaje y la visibilidad.</p>
+    <p class="note">Anota cómo fue y la visibilidad real. La app compara lo que predijo con lo que encontraste y, a partir de 3 registros en un punto, corrige sola la ola en la orilla y la visibilidad de ese punto.</p>
     <div class="row"><div><label class="note" for="lg-date">Día</label><input type="date" id="lg-date"></div><div><label class="note" for="lg-hour">Hora</label><input type="number" id="lg-hour" min="6" max="21" value="10"></div></div>
     <div class="row" style="margin-top:8px"><div><label class="note" for="lg-out">Condiciones</label><select id="lg-out"><option value="0">Fácil</option><option value="1">Con dificultad</option><option value="2">No se pudo / peligrosa</option></select></div><div><label class="note" for="lg-vis">Visibilidad (m)</label><input type="number" id="lg-vis" min="0" max="40" placeholder="opcional"></div></div>
     <p style="margin:10px 0 0"><button class="btn" id="lg-save">Guardar registro</button></p>
@@ -462,28 +472,41 @@ function tabs(){
 }
 function controls(){
   const playa=cur.tipo==="playa";
-  $("playa-ctl").style.display=playa?"":"none";$("barco-ctl").style.display=playa?"none":"block";$("lg-boca").style.display=playa?"":"none";
+  $("playa-ctl").style.display=playa?"":"none";$("barco-ctl").style.display=playa?"none":"block";$("lg-boca").style.display=playa?"":"none";$("lg-tierra").style.display=playa?"":"none";
   $("ptipo").textContent=playa?"Entrada desde playa: el semáforo usa la rompiente estimada en la orilla.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
   $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;$("bgo").value=th.bgo;$("bwarn").value=th.bwarn;
   $("v-orient").textContent=`${cur.orient}° (${card(cur.orient)})`;$("v-aper").textContent=`±${cur.aper}°`;
   $("v-tgo").textContent=`${(+th.go).toFixed(2)} m`;$("v-twarn").textContent=`${(+th.warn).toFixed(2)} m`;$("v-bgo").textContent=`${(+th.bgo).toFixed(2)} m`;$("v-bwarn").textContent=`${(+th.bwarn).toFixed(2)} m`;
   const K=learnedK(cur.id);
-  $("kinfo").textContent=!playa?"":K.n>=3?`Ajuste aprendido con ${K.n} inmersiones: la ola real en esta cala es ×${K.k.toFixed(2)} la estimada.`:`Orientación y apertura son una estimación inicial. Faltan ${3-K.n} registros para que la app aprenda esta cala.`;
+  $("kinfo").textContent=!playa?"":K.n>=3?`Corregida con ${K.n} inmersiones tuyas: en esta cala la ola en la orilla suele ser ${Math.abs(K.k-1)<0.05?"la que calculan los modelos":`un ${Math.round(Math.abs(K.k-1)*100)} % ${K.k>1?"mayor":"menor"} de lo que calculan los modelos`}, y la app ya lo tiene en cuenta.`:`Los modelos solo ven el mar abierto: no saben cómo rompe la ola en esta orilla concreta (fondo, rocas, abrigo). Si registras tus inmersiones aquí abajo, la app compara su previsión con lo que encontraste y se corrige sola. Empieza con 3 registros; llevas ${K.n}.`;
   $("aurl").value=api.url||"";$("apin").value=api.pin||"";
 }
+document.querySelectorAll(".info").forEach(b=>b.onclick=()=>{const t=$(b.dataset.tip);t.hidden=!t.hidden;b.setAttribute("aria-expanded",String(!t.hidden))});
 ["orient","aper"].forEach(k=>$(k).oninput=e=>{cur[k]=+e.target.value;saveCfg();render()});
 [["tgo","go"],["twarn","warn"],["bgo","bgo"],["bwarn","bwarn"]].forEach(([id,k])=>$(id).oninput=e=>{th[k]=+e.target.value;if(th.warn<th.go)th.warn=th.go;if(th.bwarn<th.bgo)th.bwarn=th.bgo;saveCfg();render()});
 
 function pt(deg,r){const a=(deg-90)*Math.PI/180;return [r*Math.cos(a),r*Math.sin(a)]}
-function arrow(deg,len,color,w){const [x1,y1]=pt(deg,92),[x2,y2]=pt(deg,92-len),a=Math.atan2(y2-y1,x2-x1),h=9;
-  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/><polygon points="${x2},${y2} ${x2-h*Math.cos(a-.45)},${y2-h*Math.sin(a-.45)} ${x2-h*Math.cos(a+.45)},${y2-h*Math.sin(a+.45)}" fill="${color}"/>`}
+function head(x,y,ang,color,h=10){return `<polygon points="${x},${y} ${x-h*Math.cos(ang-.45)},${y-h*Math.sin(ang-.45)} ${x-h*Math.cos(ang+.45)},${y-h*Math.sin(ang+.45)}" fill="${color}"/>`}
+// línea ondulada que llega desde la dirección deg (radio r1) hacia el centro (radio r2)
+function waveLine(deg,r1,r2,color,w){const a=(deg-90)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),N=48,pts=[];
+  for(let k=0;k<=N;k++){const t=k/N,r=r1+(r2-r1)*t,o=4.5*Math.sin(t*3.5*2*Math.PI)*(1-0.6*t);pts.push(`${(r*ca-o*sa).toFixed(1)} ${(r*sa+o*ca).toFixed(1)}`)}
+  const [x2,y2]=pt(deg,r2-2);return `<path d="M${pts.join(" L")}" stroke="${color}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`+head(x2,y2,a+Math.PI,color,11)}
 function compass(r){
-  let s=`<circle r="96" fill="var(--paper)" stroke="var(--line)"/>`;
-  if(cur.tipo==="playa"){const a1=cur.orient-cur.aper,a2=cur.orient+cur.aper,[sx,sy]=pt(a1,90),[ex,ey]=pt(a2,90);s+=`<path d="M0 0 L${sx} ${sy} A90 90 0 ${cur.aper*2>180?1:0} 1 ${ex} ${ey} Z" fill="var(--sand)" opacity=".8"/>`}
-  for(let d=0;d<360;d+=30){const [x,y]=pt(d,96),[x2,y2]=pt(d,d%90?90:84);s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="var(--muted)"/>`}
-  [["N",0],["E",90],["S",180],["O",270]].forEach(([l,d])=>{const [x,y]=pt(d,74);s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="15" fill="var(--muted)">${l}</text>`});
-  if(r){r.per.forEach(p=>{if(p.m!==r.ref.m)s+=arrow(p.d,28+Math.min(40,p.h*40),"var(--swell)",1.5)});s+=arrow(r.ref.d,28+Math.min(40,r.ref.h*40),"var(--swell)",5);if(r.wref.w>3)s+=arrow(r.wref.d,24+Math.min(40,r.wref.w),"var(--wind)",4)}
-  $("compass").innerHTML=s+`<circle r="5" fill="var(--ink)"/>`;
+  const playa=cur.tipo==="playa";
+  let s=`<defs><clipPath id="cclip"><circle r="96"/></clipPath></defs>`;
+  if(playa){const a1=cur.orient-cur.aper,a2=cur.orient+cur.aper,[sx,sy]=pt(a1,140),[ex,ey]=pt(a2,140);
+    s+=`<circle r="96" fill="var(--land)"/><path clip-path="url(#cclip)" d="M0 0 L${sx} ${sy} A140 140 0 ${cur.aper*2>180?1:0} 1 ${ex} ${ey} Z" fill="var(--sea)"/>`}
+  else s+=`<circle r="96" fill="var(--sea)"/>`;
+  s+=`<circle r="96" fill="none" stroke="var(--line)" stroke-width="1.5"/>`;
+  for(let d=0;d<360;d+=30){const [x,y]=pt(d,96),[x2,y2]=pt(d,d%90?90:84);s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="var(--ink)" opacity=".45"/>`}
+  [["N",0],["E",90],["S",180],["O",270]].forEach(([l,d])=>{const [x,y]=pt(d,76);s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-family="Barlow Condensed" font-weight="700" font-size="15" fill="var(--ink)" opacity=".7">${l}</text>`});
+  if(r){
+    r.per.forEach(p=>{if(p.m===r.ref.m)return;const [x1,y1]=pt(p.d,96),[x2,y2]=pt(p.d,86);s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--waveln)" stroke-width="3" opacity=".55" stroke-linecap="round"/>`});
+    s+=waveLine(r.ref.domD??r.ref.d,104,26,"var(--waveln)",3.2);
+    if(r.wref.w>3){const d=r.wref.d,[x1,y1]=pt(d,104),[x2,y2]=pt(d+180,62),a=Math.atan2(y2-y1,x2-x1),w=2.5+Math.min(3,r.wref.w/10);
+      s+=`<line x1="${x1}" y1="${y1}" x2="${x2-6*Math.cos(a)}" y2="${y2-6*Math.sin(a)}" stroke="var(--wind)" stroke-width="${w}" stroke-linecap="round"/>`+head(x2,y2,a,"var(--wind)",13)}
+  }
+  $("compass").innerHTML=s+`<circle r="4.5" fill="var(--ink)" stroke="var(--paper)" stroke-width="1.5"/>`;
 }
 function aemetFor(p,date,hour){const a=aemetData[p.id];if(!a||!a.dias[date])return null;const d=a.dias[date];return {lv:hour<14?d.am:d.pm,txt:hour<14?d.amTxt:d.pmTxt,tAgua:d.tAgua}}
 function nivelFinal(p,r,date,hr){const a=aemetFor(p,date,hr);let lv=r.lv,disc=false;if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}return {lv,disc}}
