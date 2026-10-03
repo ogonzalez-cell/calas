@@ -55,6 +55,7 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .cell .wx{position:absolute;top:3px;left:4px;font-size:12px;line-height:1}.cell.haswx{padding-top:11px}
 .wxd{font-size:13px;white-space:nowrap}
 .cell[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.cell.storm{box-shadow:inset 0 0 0 3px #7A1F14}.cell.storm[aria-pressed="true"]{box-shadow:inset 0 0 0 3px #7A1F14,0 0 0 3px var(--ink)}
 .detail dl{display:grid;grid-template-columns:1fr auto;gap:4px 14px;margin:8px 0}.detail dt{color:var(--muted)}.detail dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
 .mt{font-size:13px;min-width:0}.mt td,.mt th{padding:3px 6px}.mt td{font-variant-numeric:tabular-nums}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px}
@@ -196,7 +197,7 @@ th.tarde{color:var(--posidonia)}
   <section class="panel">
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
-    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span></div>
+    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span><span><i style="background:transparent;box-shadow:inset 0 0 0 2px #7A1F14"></i>Tormenta: el mar deja entrar, el tiempo no</span></div>
     <p class="note" style="margin:0 0 6px" id="gnote"></p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
@@ -403,8 +404,10 @@ function evalAt(p,i,dayIdx){
   for(const L of [2,1]){if(L>lv&&above(L)>=Math.max(2,Math.ceil(per.length/2))){lv=L;why.push([L,`${above(L)} de ${per.length} modelos dan ${LVTXT[L].toLowerCase()}`]);break}}
   if(lv<2&&above(lv+1)>=2){lv++;why.push([lv,`${above(lv)} modelos dan ${LVTXT[lv].toLowerCase()}: se sube un nivel por prudencia`])}
   if(lv===0&&conf<0.45){lv=1;why.push([1,"Modelos en desacuerdo: con precaución"])}
-  if(D.wx&&D.wx.code[i]>=95&&lv<1){lv=1;why.push([1,"Tormenta prevista: rayos y rachas; evita estar en superficie"])}
-  return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length};
+  // la tormenta no cambia el color (el color es solo el mar): se marca aparte como aviso del tiempo
+  const storm=!!(D.wx&&D.wx.code[i]>=95);
+  if(storm)why.push([2,"Tormenta prevista: el mar permite entrar, pero con rayos y rachas el tiempo aconseja no ir"]);
+  return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length,storm};
 }
 const VIENTOS=["tramuntana","gregal","llevant","xaloc","migjorn","garbí","ponent","mestral"];
 const vientoNombre=d=>d==null?"":VIENTOS[Math.round(d/45)%8];
@@ -582,12 +585,13 @@ function wxDia(D,date){if(!D.wx)return null;const hs=[];D.times.forEach((t,i)=>{
 function nivelFinal(p,r,date,hr){const a=aemetFor(p,date,hr);let lv=r.lv,disc=false;if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}return {lv,disc}}
 // Ventana del día (7-20 h): el tramo seguido más largo en verde; si no hay, en ámbar; si no, mejor no bucear
 function ventanaDia(p,D,date,day){
-  const hs=[];D.times.forEach((t,i)=>{if(t.slice(0,10)!==date)return;const hr=+t.slice(11,13);if(hr<7||hr>20)return;const r=evalAt(p,i,day);if(r)hs.push({hr,lv:nivelFinal(p,r,date,hr).lv})});
+  const hs=[];D.times.forEach((t,i)=>{if(t.slice(0,10)!==date)return;const hr=+t.slice(11,13);if(hr<7||hr>20)return;const r=evalAt(p,i,day);if(r)hs.push({hr,lv:nivelFinal(p,r,date,hr).lv,storm:r.storm})});
+  const sh=hs.filter(x=>x.storm).map(x=>x.hr),st=!sh.length?"":sh.length>=10?"tormenta casi todo el día":`tormenta entre las ${Math.min(...sh)} y las ${Math.max(...sh)+1} h`;
   if(!hs.length)return null;
   const run=max=>{let best=null,s=-1;hs.forEach((x,k)=>{if(x.lv>max){s=-1;return}if(s<0||x.hr!==hs[k-1].hr+1)s=k;const len=k-s+1;if(!best||len>best.len)best={a:hs[s].hr,b:x.hr+1,len}});return best};
-  const g=run(0);if(g&&g.len>=2)return {lv:0,txt:`Apto de ${g.a} a ${g.b} h`};
-  const w=run(1);if(w&&w.len>=2)return {lv:1,txt:`Con precaución de ${w.a} a ${w.b} h`};
-  return {lv:2,txt:"Mejor no bucear"};
+  const g=run(0);if(g&&g.len>=2)return {lv:0,txt:`Apto de ${g.a} a ${g.b} h`,st};
+  const w=run(1);if(w&&w.len>=2)return {lv:1,txt:`Con precaución de ${w.a} a ${w.b} h`,st};
+  return {lv:2,txt:"Mejor no bucear",st};
 }
 function fmtTime(t){return t?new Date(t).toLocaleString("es-ES",{weekday:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"–"}
 
@@ -605,13 +609,13 @@ function render(){
     const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toLocaleDateString("sv-SE");
     const ii=idx.slice(day*HOURS.length,(day+1)*HOURS.length);if(!ii.length)continue;
     const r48=rain48(D,date),sv=ii.map(i=>D.sst[i]).filter(v=>v!=null),ae=aemetFor(cur,date,8);
-    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b>${(()=>{const v=ventanaDia(cur,D,date,day);return v?`<span class="apto a${v.lv}">${v.txt}</span>`:""})()}${(()=>{const w=wxDia(D,date);return w?`<span class="wxd" title="Tiempo previsto">${w.i} ${w.t}${w.tmax!=null?` · ${w.tmin}–${w.tmax} °C`:""}</span>`:""})()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
+    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b>${(()=>{const v=ventanaDia(cur,D,date,day);return v?`<span class="apto a${v.lv}" title="Según el mar">🌊 ${v.txt}</span>${v.st?`<span class="apto a2" title="Según el tiempo">⛈️ El tiempo aconseja no ir: ${v.st}</span>`:""}`:""})()}${(()=>{const w=wxDia(D,date);return w?`<span class="wxd" title="Tiempo previsto">${w.i} ${w.t}${w.tmax!=null?` · ${w.tmin}–${w.tmax} °C`:""}</span>`:""})()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
     ii.forEach(i=>{const hr=+D.times[i].slice(11,13),r=evalAt(cur,i,day);if(!r){html+="<td></td>";return}
       const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
       const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null,pl=cur.tipo==="playa";
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${(pl?r.ref.he:r.ref.h).toFixed(1)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${(pl?r.ref.he:r.ref.h).toFixed(1)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
@@ -642,7 +646,7 @@ function explica(p,r,dt,hr){
     const rm=h<0.3?"con el mar en calma":e.mv===2?"expuesta al mar":e.mv===1?"algo expuesta al mar":"a resguardo del mar";
     res=`En resumen: ${rw} y ${rm}.`;
   }
-  return `<b>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00</b><br>💨 ${esc(lw)}<br>🌊 ${esc(lm)}${res?`<br><span class="cres">${esc(res)}</span>`:""}`;
+  return `<b>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00</b><br>💨 ${esc(lw)}<br>🌊 ${esc(lm)}${res?`<br><span class="cres">${esc(res)}</span>`:""}${r.storm?`<br>⛈️ <b>Tiempo:</b> tormenta prevista a esta hora. El mar permite entrar, pero con rayos y rachas no conviene ir.`:""}`;
 }
 function detail(D,idx){
   const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";$("cexp").innerHTML="";return}
