@@ -508,13 +508,16 @@ function visEstim(p,D,i,dayIdx=0){
 const nameOf=k=>(WAVE_MODELS.find(x=>x[0]===k)||WIND_MODELS.find(x=>x[0]===k)||[k,k])[1];
 
 // ---------- UI ----------
-let cur=PUNTOS[0],sel=null,selDay=0;
+// orden de las pestañas y del desplegable; los puntos nuevos van al final
+const ORDEN=["sfg","begur","tossa","blanes","boreas","ullastres","vedell"];
+const ordenados=()=>PUNTOS.map((p,i)=>[p,i]).sort((a,b)=>{const x=ORDEN.indexOf(a[0].id),y=ORDEN.indexOf(b[0].id);return (x<0?99:x)-(y<0?99:y)||a[1]-b[1]}).map(a=>a[0]);
+let cur=ordenados()[0],sel=null,selDay=0;
 function gridIdx(D){const out=[];D.times.forEach((t,i)=>{if(t.slice(0,10)>=D.today&&HOURS.includes(+t.slice(11,13)))out.push(i)});return out.slice(0,7*HOURS.length)}
 function rain48(D,date){let s=0;const ref=new Date(date+"T00:00");D.times.forEach((t,i)=>{const diff=(ref-new Date(t))/36e5;if(diff>0&&diff<=48)s+=D.precip[i]||0});return s}
 function tabs(){
-  $("tabs").innerHTML=PUNTOS.map(p=>`<button role="tab" aria-selected="${p===cur}" data-id="${p.id}">${esc(p.name)}${p.tipo==="barco"?" ⛵":""}</button>`).join("");
+  $("tabs").innerHTML=ordenados().map(p=>`<button role="tab" aria-selected="${p===cur}" data-id="${p.id}">${esc(p.name)}${p.tipo==="barco"?" ⛵":""}</button>`).join("");
   $("tabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{cur=PUNTOS.find(p=>p.id===b.dataset.id);sel=null;fillEditor();render()});
-  $("psel").innerHTML=PUNTOS.map(p=>`<option value="${p.id}"${p===cur?" selected":""}>${esc(p.name)}${p.tipo==="barco"?" (barco)":""}</option>`).join("");
+  $("psel").innerHTML=ordenados().map(p=>`<option value="${p.id}"${p===cur?" selected":""}>${esc(p.name)}${p.tipo==="barco"?" (barco)":""}</option>`).join("");
   $("psel").onchange=e=>{cur=PUNTOS.find(p=>p.id===e.target.value);sel=null;fillEditor();render()};
 }
 function controls(){
