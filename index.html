@@ -140,8 +140,8 @@ th.tarde{color:var(--posidonia)}
       <div class="ctl"><div class="lbl"><label for="orient">Hacia dónde mira la cala</label><button type="button" class="info" data-tip="t-orient" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-orient"></span></div><p class="tip" id="t-orient" hidden>La dirección hacia la que se abre la boca de la cala, hacia mar abierto (zona azul del dibujo). Las olas y el viento que vienen de ahí entran de lleno; los que llegan desde tierra (zona marrón) no.</p><input type="range" id="orient" min="0" max="359" step="5"></div>
       <div class="ctl"><div class="lbl"><label for="aper">Lo ancha que es la boca</label><button type="button" class="info" data-tip="t-aper" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-aper"></span></div><p class="tip" id="t-aper" hidden>Cuántos grados abre la boca a cada lado de esa dirección. Una cala cerrada entre rocas abre poco (±20°); una playa recta o una punta, mucho (±70°). Cuanto más ancha, más direcciones de mar le afectan.</p><input type="range" id="aper" min="10" max="90" step="5"></div>
       <details class="adv"><summary>Límites del semáforo</summary>
-      <div class="ctl"><div class="lbl"><label for="tgo">Ola: verde por debajo de</label><button type="button" class="info" data-tip="t-tgo" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-tgo"></span></div><p class="tip" id="t-tgo" hidden>Se compara con el número grande de cada casilla: la ola en mar abierto, como en Windy. Por debajo de este valor, verde.</p><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
-      <div class="ctl"><div class="lbl"><label for="twarn">Ola: rojo desde</label><button type="button" class="info" data-tip="t-twarn" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-twarn"></span></div><p class="tip" id="t-twarn" hidden>Desde el límite verde hasta justo antes de este valor, ámbar: se puede, con cuidado. A partir de este valor, rojo.</p><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="tgo">Ola en la cala: verde por debajo de</label><button type="button" class="info" data-tip="t-tgo" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-tgo"></span></div><p class="tip" id="t-tgo" hidden>Se compara con el número grande de cada casilla: la ola que llega a la cala, calculada a partir del mar abierto y de hacia dónde mira la cala. Por debajo de este valor, verde.</p><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="twarn">Ola en la cala: rojo desde</label><button type="button" class="info" data-tip="t-twarn" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-twarn"></span></div><p class="tip" id="t-twarn" hidden>Desde el límite verde hasta justo antes de este valor, ámbar: se puede, con cuidado. A partir de este valor, rojo.</p><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
       </details>
     </div>
     <div id="barco-ctl">
@@ -196,7 +196,7 @@ th.tarde{color:var(--posidonia)}
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
     <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span></div>
-    <p class="note" style="margin:0 0 6px">Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, rompiente estimada en la orilla (o periodo) y viento.</p>
+    <p class="note" style="margin:0 0 6px" id="gnote"></p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
   </section>
@@ -307,7 +307,7 @@ const breaker=(H,T)=>H<0.05||!T?0:0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4);
 const lvOpen=h=>{const x=Math.round(h*10)/10;return x>=th.warn?2:x>=th.go?1:0};
 function waveLevel(p,h,t,d,K){
   if(p.tipo==="barco"){const lv=h>th.bwarn?2:h>th.bgo?1:0;return {lv,val:h,f:1,hb:null}}
-  const f=exposure(d,p,t),hb=breaker(h*f,t);return {lv:lvOpen(h*K),val:hb,f,hb};
+  const f=exposure(d,p,t),hb=breaker(h*f,t),he=h*f*K;return {lv:lvOpen(he),val:he,f,hb,he};
 }
 function windEval(w,g,d,p){
   let l=0;const why=[];const up=(x,t)=>{if(x>l)l=x;why.push([x,t])};
@@ -327,7 +327,7 @@ function learnedK(pid){
   const L=logs.filter(x=>x.cala===pid&&x.pred&&x.pred.h!=null);
   if(L.length<3)return {k:1,n:L.length};
   let best={k:1,err:Infinity};
-  for(let k=0.4;k<=2.001;k+=0.05){let err=0;L.forEach(x=>{const lv=Math.max(lvOpen(x.pred.h*k),x.pred.wl);err+=Math.abs(lv-x.out)});
+  for(let k=0.4;k<=2.001;k+=0.05){let err=0;L.forEach(x=>{const lv=Math.max(lvOpen((x.pred.he??x.pred.h)*k),x.pred.wl);err+=Math.abs(lv-x.out)});
     if(err<best.err-1e-9||(Math.abs(err-best.err)<1e-9&&Math.abs(k-1)<Math.abs(best.k-1)))best={k,err}}
   return {k:+best.k.toFixed(2),n:L.length};
 }
@@ -348,7 +348,7 @@ function evalAt(p,i,dayIdx){
   if(comps&&ref.m==="ecmwf_wam025"){
     const loc=comps.map(c=>({...c,e:c.h*c.f})),hl=Math.sqrt(loc.reduce((s,c)=>s+c.e*c.e,0)),dom=loc.reduce((a,b)=>b.e>a.e?b:a);
     ref.comps=loc;
-    if(p.tipo==="playa"){ref.hb=breaker(hl,dom.t);ref.val=ref.hb;ref.f=ref.h>0?hl/ref.h:1;ref.lv=lvOpen(ref.h*K);ref.domD=dom.d}
+    if(p.tipo==="playa"){ref.hb=breaker(hl,dom.t);ref.val=ref.hb;ref.f=ref.h>0?hl/ref.h:1;ref.he=hl*K;ref.val=ref.he;ref.lv=lvOpen(ref.he);ref.domD=dom.d}
     ref.t=comps.reduce((a,b)=>b.h>a.h?b:a).t??ref.t;
   }
   const W=Object.entries(D.wind).map(([m,x])=>({m,w:x.w[i],g:x.g[i],d:x.d[i]})).filter(x=>x.w!=null);
@@ -356,7 +356,7 @@ function evalAt(p,i,dayIdx){
   const we=windEval(wref.w,wref.g||0,wref.d||0,p);
   let lv=ref.lv;const why=[];
   if(p.tipo==="barco")why.push([ref.lv,`Ola en mar abierto ${ref.h.toFixed(2)} m (${nameOf(ref.m)})`]);
-  else why.push([ref.lv,`Ola en mar abierto ${ref.h.toFixed(1)} m (${nameOf(ref.m)})${K!==1?` · corregida por tus inmersiones: ${(ref.h*K).toFixed(1)} m`:""} · en la orilla ~${ref.hb.toFixed(1)} m`]);
+  else why.push([ref.lv,`Ola que llega a la cala ~${ref.he.toFixed(1)} m: en mar abierto hay ${ref.h.toFixed(1)} m del ${card(ref.domD??ref.d)} (${nameOf(ref.m)}) y entra el ${Math.round(Math.min(1,ref.he/Math.max(0.01,ref.h))*100)} %${K!==1?" según la orientación y tus inmersiones":" según la orientación de la cala"}`]);
   if(ref.t>=8&&ref.h>(p.tipo==="barco"?0.6:0.3)){lv=Math.max(lv,1);why.push([1,`Periodo largo (${ref.t.toFixed(1)} s): mar de fondo con fuerza${p.tipo==="playa"?" y posible resaca":""}`])}
   if(we.l>lv)lv=we.l;why.push(...we.why);
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
@@ -369,9 +369,6 @@ function evalAt(p,i,dayIdx){
   for(const L of [2,1]){if(L>lv&&above(L)>=Math.max(2,Math.ceil(per.length/2))){lv=L;why.push([L,`${above(L)} de ${per.length} modelos dan ${LVTXT[L].toLowerCase()}`]);break}}
   if(lv<2&&above(lv+1)>=2){lv++;why.push([lv,`${above(lv)} modelos dan ${LVTXT[lv].toLowerCase()}: se sube un nivel por prudencia`])}
   if(lv===0&&conf<0.45){lv=1;why.push([1,"Modelos en desacuerdo: con precaución"])}
-  if(p.tipo==="playa"){const fD=exposure(ref.domD??ref.d,p,ref.t);
-    if(ref.h>=1.4&&fD>=0.25&&lv<2){lv=2;why.push([2,`Ola de ${ref.h.toFixed(1)} m en mar abierto que entra en la cala`])}
-    else if(ref.h>=0.9&&fD>=0.25&&lv<1){lv=1;why.push([1,`Ola de ${ref.h.toFixed(1)} m en mar abierto: precaución aunque la orilla parezca tranquila`])}}
   if(D.wx&&D.wx.code[i]>=95&&lv<1){lv=1;why.push([1,"Tormenta prevista: rayos y rachas; evita estar en superficie"])}
   return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length};
 }
@@ -486,7 +483,8 @@ function tabs(){
 function controls(){
   const playa=cur.tipo==="playa";
   $("playa-ctl").style.display=playa?"":"none";$("barco-ctl").style.display=playa?"none":"block";$("lg-boca").style.display=playa?"":"none";$("lg-tierra").style.display=playa?"":"none";
-  $("ptipo").textContent=playa?"Entrada desde playa: el color sale de la ola en mar abierto (el número grande) y empeora si el viento entra en la cala, hay mar de fondo largo, tormenta o los modelos no coinciden.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
+  $("gnote").textContent=playa?"Número grande: ola que llega a la cala, calculada con la ola en mar abierto (ECMWF, como Windy) y hacia dónde mira la cala. Debajo: ola en mar abierto y viento.":"Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, periodo y viento.";
+  $("ptipo").textContent=playa?"Entrada desde playa: el color sale de la ola que llega a la cala (el número grande), no de la de mar abierto. Empeora si el viento entra en la cala, hay mar de fondo largo, tormenta o los modelos no coinciden.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
   $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;$("bgo").value=th.bgo;$("bwarn").value=th.bwarn;
   $("v-orient").textContent=`${cur.orient}° (${card(cur.orient)})`;$("v-aper").textContent=`±${cur.aper}°`;
   $("v-tgo").textContent=`${(+th.go).toFixed(2)} m`;$("v-twarn").textContent=`${(+th.warn).toFixed(2)} m`;$("v-bgo").textContent=`${(+th.bgo).toFixed(2)} m`;$("v-bwarn").textContent=`${(+th.bwarn).toFixed(2)} m`;
@@ -573,8 +571,8 @@ function render(){
       const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
-      const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${r.ref.h.toFixed(1)} metros, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${r.ref.h.toFixed(1)}<span class="u"> m</span></span>${sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null,pl=cur.tipo==="playa";
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${(pl?r.ref.he:r.ref.h).toFixed(1)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
@@ -600,6 +598,7 @@ function explica(p,r,dt,hr){
     else if(e.marCara)lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}${T?` cada ${Math.round(T)} s`:""}. Entra de frente por la boca de la cala.`;
     else if(e.marLado)lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}. Llega de lado: entra en parte.`;
     else lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}. Viene de fuera de la boca: la cala queda a resguardo de este mar.`;
+    if(h>=0.3&&r.ref.he!=null)lm+=` Llegan unos ${r.ref.he.toFixed(1)} m a la cala.`;
     const rw=e.wv===2?"expuesta al viento":e.wv===1?"algo expuesta al viento":"resguardada del viento";
     const rm=h<0.3?"con el mar en calma":e.mv===2?"expuesta al mar":e.mv===1?"algo expuesta al mar":"a resguardo del mar";
     res=`En resumen: ${rw} y ${rm}.`;
@@ -611,8 +610,8 @@ function detail(D,idx){
   const date=D.times[i].slice(0,10),hr=+D.times[i].slice(11,13),dt=new Date(date+"T12:00:00"),a=aemetFor(cur,date,hr),r48=rain48(D,date),playa=cur.tipo==="playa";
   $("cexp").innerHTML=explica(cur,r,dt,hr);
   $("detail").innerHTML=`<h2>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00${sel===null?" (toca una casilla)":""}</h2>
-  <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>Orilla</th>":""}<th></th></tr></thead><tbody>
-  ${r.per.map(p=>`<tr${p.m===r.ref.m?' style="font-weight:600"':""}><td>${nameOf(p.m)}${p.m===r.ref.m?" (referencia)":""}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td>${playa?`<td>${Math.round(p.f*100)} %</td><td>${p.hb.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
+  <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}<th></th></tr></thead><tbody>
+  ${r.per.map(p=>`<tr${p.m===r.ref.m?' style="font-weight:600"':""}><td>${nameOf(p.m)}${p.m===r.ref.m?" (referencia)":""}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td>${playa?`<td>${Math.round(p.f*100)} %</td><td>${p.he.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
   </tbody></table>
   ${r.ref.comps?`<h3>Componentes del oleaje (Météo-France)</h3><table class="mt"><thead><tr><th></th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}</tr></thead><tbody>${r.ref.comps.map(c=>`<tr><td>${COMP_NOM[c.k]}</td><td>${c.h.toFixed(2)} m · ${(c.t||0).toFixed(1)} s · del ${card(c.d)}</td>${playa?`<td>${Math.round(c.f*100)} %</td><td>${c.e.toFixed(2)} m</td>`:""}</tr>`).join("")}</tbody></table>`:""}
   <dl>
@@ -641,7 +640,7 @@ $("lg-save").onclick=()=>{
   const date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=$("lg-vis").value===""?null:+$("lg-vis").value;
   const D=DATA[cur.id];let pred=null;
   if(D){let best=-1,bd=1e9;D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const d=Math.abs(+t.slice(11,13)-hour);if(d<bd){bd=d;best=i}}});
-    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
+    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,he:r.ref.he!=null?r.ref.he/K:null,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
   const entry={id:newId(),cala:cur.id,date,hour,out,vis,pred};
   logs.push(entry);store.set("calas3-logs",logs);
   srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(()=>{pending.push(entry);store.set("calas3-pending",pending);render()});
