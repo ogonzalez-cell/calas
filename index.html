@@ -138,8 +138,8 @@ th.tarde{color:var(--posidonia)}
       <div class="ctl"><div class="lbl"><label for="orient">Hacia dónde mira la cala</label><button type="button" class="info" data-tip="t-orient" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-orient"></span></div><p class="tip" id="t-orient" hidden>La dirección hacia la que se abre la boca de la cala, hacia mar abierto (zona azul del dibujo). Las olas y el viento que vienen de ahí entran de lleno; los que llegan desde tierra (zona marrón) no.</p><input type="range" id="orient" min="0" max="359" step="5"></div>
       <div class="ctl"><div class="lbl"><label for="aper">Lo ancha que es la boca</label><button type="button" class="info" data-tip="t-aper" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-aper"></span></div><p class="tip" id="t-aper" hidden>Cuántos grados abre la boca a cada lado de esa dirección. Una cala cerrada entre rocas abre poco (±20°); una playa recta o una punta, mucho (±70°). Cuanto más ancha, más direcciones de mar le afectan.</p><input type="range" id="aper" min="10" max="90" step="5"></div>
       <details class="adv"><summary>Límites del semáforo</summary>
-      <div class="ctl"><div class="lbl"><label for="tgo">Ola en la orilla: verde hasta</label><button type="button" class="info" data-tip="t-tgo" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-tgo"></span></div><p class="tip" id="t-tgo" hidden>La app calcula la ola que romperá en la orilla, donde entras y sales andando. Si no pasa de este valor, la casilla sale en verde: entrada fácil.</p><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
-      <div class="ctl"><div class="lbl"><label for="twarn">Ola en la orilla: rojo desde</label><button type="button" class="info" data-tip="t-twarn" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-twarn"></span></div><p class="tip" id="t-twarn" hidden>Entre el límite verde y este valor sale ámbar: se puede, con cuidado. Por encima, rojo: entrar o salir es peligroso.</p><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="tgo">Ola: verde por debajo de</label><button type="button" class="info" data-tip="t-tgo" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-tgo"></span></div><p class="tip" id="t-tgo" hidden>Se compara con el número grande de cada casilla: la ola en mar abierto, como en Windy. Por debajo de este valor, verde.</p><input type="range" id="tgo" min="0.2" max="1" step="0.05"></div>
+      <div class="ctl"><div class="lbl"><label for="twarn">Ola: rojo desde</label><button type="button" class="info" data-tip="t-twarn" aria-label="Qué significa" aria-expanded="false">i</button><span class="val" id="v-twarn"></span></div><p class="tip" id="t-twarn" hidden>Desde el límite verde hasta justo antes de este valor, ámbar: se puede, con cuidado. A partir de este valor, rojo.</p><input type="range" id="twarn" min="0.4" max="1.5" step="0.05"></div>
       </details>
     </div>
     <div id="barco-ctl">
@@ -232,6 +232,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 let PUNTOS=store.get("calas4-puntos",null);
 if(!PUNTOS){PUNTOS=JSON.parse(JSON.stringify(DEFAULT_PUNTOS));const old=store.get("calas3-cfg",{});PUNTOS.forEach(p=>{if(old[p.id]){p.orient=old[p.id].orient??p.orient;p.aper=old[p.id].aper??p.aper}})}
 const th=Object.assign({go:0.7,warn:1.0,bgo:0.8,bwarn:1.2},store.get("calas4-th",{}));if(!th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1}
+if(!th.v7){th.go=0.7;th.warn=1.0;th.v7=1} // v7: los límites se aplican a la ola en mar abierto (número grande)
 function addNewDefaults(seenArr){const seen=new Set(seenArr||PUNTOS.map(p=>p.id));let ch=false;DEFAULT_PUNTOS.forEach(d=>{if(!seen.has(d.id)){seen.add(d.id);if(!PUNTOS.some(p=>p.id===d.id)){PUNTOS.push(JSON.parse(JSON.stringify(d)));ch=true}}});th.seenDef=[...seen];return ch}
 const FIXES_REV=1,FIXES={blanes:{orient:135,aper:75},tossa:{orient:180,aper:25},sfg:{orient:135,aper:45,lat:41.7714,lon:3.0304},vedell:{orient:125,aper:45},begur:{orient:65,aper:30}}; // orientaciones medidas sobre la línea de costa de OpenStreetMap
 function applyFixes(rev){if((rev||0)>=FIXES_REV)return false;PUNTOS.forEach(p=>{if(FIXES[p.id])Object.assign(p,FIXES[p.id])});th.fixRev=FIXES_REV;return true}
@@ -300,9 +301,11 @@ function exposure(dir,p,T){const d=angDiff(dir,p.orient),a=p.aper;let f;if(d<=a)
   if(T&&T>=7&&d<=a+100)f=Math.max(f,Math.min(0.4,0.2+0.04*(T-7))); // el mar de fondo largo rodea las puntas
   return f}
 const breaker=(H,T)=>H<0.05||!T?0:0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4);
+// Semáforo de entrada desde playa sobre la ola en mar abierto redondeada como se muestra: < verde, hasta rojo, desde rojo
+const lvOpen=h=>{const x=Math.round(h*10)/10;return x>=th.warn?2:x>=th.go?1:0};
 function waveLevel(p,h,t,d,K){
   if(p.tipo==="barco"){const lv=h>th.bwarn?2:h>th.bgo?1:0;return {lv,val:h,f:1,hb:null}}
-  const f=exposure(d,p,t),hb=breaker(h*f,t)*K;return {lv:hb>th.warn?2:hb>th.go?1:0,val:hb,f,hb};
+  const f=exposure(d,p,t),hb=breaker(h*f,t);return {lv:lvOpen(h*K),val:hb,f,hb};
 }
 function windEval(w,g,d,p){
   let l=0;const why=[];const up=(x,t)=>{if(x>l)l=x;why.push([x,t])};
@@ -319,10 +322,10 @@ function windEval(w,g,d,p){
 }
 function learnedK(pid){
   const p=PUNTOS.find(x=>x.id===pid);if(!p||p.tipo!=="playa")return {k:1,n:0};
-  const L=logs.filter(x=>x.cala===pid&&x.pred&&x.pred.hb!=null);
+  const L=logs.filter(x=>x.cala===pid&&x.pred&&x.pred.h!=null);
   if(L.length<3)return {k:1,n:L.length};
   let best={k:1,err:Infinity};
-  for(let k=0.4;k<=2.001;k+=0.05){let err=0;L.forEach(x=>{const hb=x.pred.hb*k,lv=Math.max(hb>th.warn?2:hb>th.go?1:0,x.pred.wl);err+=Math.abs(lv-x.out)});
+  for(let k=0.4;k<=2.001;k+=0.05){let err=0;L.forEach(x=>{const lv=Math.max(lvOpen(x.pred.h*k),x.pred.wl);err+=Math.abs(lv-x.out)});
     if(err<best.err-1e-9||(Math.abs(err-best.err)<1e-9&&Math.abs(k-1)<Math.abs(best.k-1)))best={k,err}}
   return {k:+best.k.toFixed(2),n:L.length};
 }
@@ -343,7 +346,7 @@ function evalAt(p,i,dayIdx){
   if(comps&&ref.m==="ecmwf_wam025"){
     const loc=comps.map(c=>({...c,e:c.h*c.f})),hl=Math.sqrt(loc.reduce((s,c)=>s+c.e*c.e,0)),dom=loc.reduce((a,b)=>b.e>a.e?b:a);
     ref.comps=loc;
-    if(p.tipo==="playa"){ref.hb=breaker(hl,dom.t)*K;ref.val=ref.hb;ref.f=ref.h>0?hl/ref.h:1;ref.lv=ref.hb>th.warn?2:ref.hb>th.go?1:0;ref.domD=dom.d}
+    if(p.tipo==="playa"){ref.hb=breaker(hl,dom.t);ref.val=ref.hb;ref.f=ref.h>0?hl/ref.h:1;ref.lv=lvOpen(ref.h*K);ref.domD=dom.d}
     ref.t=comps.reduce((a,b)=>b.h>a.h?b:a).t??ref.t;
   }
   const W=Object.entries(D.wind).map(([m,x])=>({m,w:x.w[i],g:x.g[i],d:x.d[i]})).filter(x=>x.w!=null);
@@ -351,7 +354,7 @@ function evalAt(p,i,dayIdx){
   const we=windEval(wref.w,wref.g||0,wref.d||0,p);
   let lv=ref.lv;const why=[];
   if(p.tipo==="barco")why.push([ref.lv,`Ola en mar abierto ${ref.h.toFixed(2)} m (${nameOf(ref.m)})`]);
-  else why.push([ref.lv,`Rompiente estimada ${ref.hb.toFixed(2)} m con la ola de ${nameOf(ref.m)} (${ref.h.toFixed(2)} m en mar abierto)`]);
+  else why.push([ref.lv,`Ola en mar abierto ${ref.h.toFixed(1)} m (${nameOf(ref.m)})${K!==1?` · corregida por tus inmersiones: ${(ref.h*K).toFixed(1)} m`:""} · en la orilla ~${ref.hb.toFixed(1)} m`]);
   if(ref.t>=8&&ref.h>(p.tipo==="barco"?0.6:0.3)){lv=Math.max(lv,1);why.push([1,`Periodo largo (${ref.t.toFixed(1)} s): mar de fondo con fuerza${p.tipo==="playa"?" y posible resaca":""}`])}
   if(we.l>lv)lv=we.l;why.push(...we.why);
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
@@ -480,12 +483,12 @@ function tabs(){
 function controls(){
   const playa=cur.tipo==="playa";
   $("playa-ctl").style.display=playa?"":"none";$("barco-ctl").style.display=playa?"none":"block";$("lg-boca").style.display=playa?"":"none";$("lg-tierra").style.display=playa?"":"none";
-  $("ptipo").textContent=playa?"Entrada desde playa: el semáforo usa la rompiente estimada en la orilla.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
+  $("ptipo").textContent=playa?"Entrada desde playa: el color sale de la ola en mar abierto (el número grande) y empeora si el viento entra en la cala, hay mar de fondo largo, tormenta o los modelos no coinciden.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
   $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;$("bgo").value=th.bgo;$("bwarn").value=th.bwarn;
   $("v-orient").textContent=`${cur.orient}° (${card(cur.orient)})`;$("v-aper").textContent=`±${cur.aper}°`;
   $("v-tgo").textContent=`${(+th.go).toFixed(2)} m`;$("v-twarn").textContent=`${(+th.warn).toFixed(2)} m`;$("v-bgo").textContent=`${(+th.bgo).toFixed(2)} m`;$("v-bwarn").textContent=`${(+th.bwarn).toFixed(2)} m`;
   const K=learnedK(cur.id);
-  $("kinfo").textContent=!playa?"":K.n>=3?`Corregida con ${K.n} inmersiones tuyas: en esta cala la ola en la orilla suele ser ${Math.abs(K.k-1)<0.05?"la que calculan los modelos":`un ${Math.round(Math.abs(K.k-1)*100)} % ${K.k>1?"mayor":"menor"} de lo que calculan los modelos`}, y la app ya lo tiene en cuenta.`:`Los modelos solo ven el mar abierto: no saben cómo rompe la ola en esta orilla concreta (fondo, rocas, abrigo). Si registras tus inmersiones aquí abajo, la app compara su previsión con lo que encontraste y se corrige sola. Empieza con 3 registros; llevas ${K.n}.`;
+  $("kinfo").textContent=!playa?"":K.n>=3?`Corregida con ${K.n} inmersiones tuyas: en esta cala el mar se comporta ${Math.abs(K.k-1)<0.05?"como dicen los modelos":`como si la ola fuera un ${Math.round(Math.abs(K.k-1)*100)} % ${K.k>1?"mayor":"menor"} de la prevista`}, y el semáforo ya lo tiene en cuenta.`:`Los modelos solo ven el mar abierto: no saben cómo rompe la ola en esta orilla concreta (fondo, rocas, abrigo). Si registras tus inmersiones aquí abajo, la app compara su previsión con lo que encontraste y se corrige sola. Empieza con 3 registros; llevas ${K.n}.`;
   $("aurl").value=api.url||"";$("apin").value=api.pin||"";
 }
 document.querySelectorAll(".info").forEach(b=>b.onclick=()=>{const t=$(b.dataset.tip);t.hidden=!t.hidden;b.setAttribute("aria-expanded",String(!t.hidden))});
@@ -609,7 +612,7 @@ $("lg-save").onclick=()=>{
   const date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=$("lg-vis").value===""?null:+$("lg-vis").value;
   const D=DATA[cur.id];let pred=null;
   if(D){let best=-1,bd=1e9;D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const d=Math.abs(+t.slice(11,13)-hour);if(d<bd){bd=d;best=i}}});
-    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,hb:r.ref.hb!=null?r.ref.hb/K:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
+    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
   const entry={id:newId(),cala:cur.id,date,hour,out,vis,pred};
   logs.push(entry);store.set("calas3-logs",logs);
   srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(()=>{pending.push(entry);store.set("calas3-pending",pending);render()});
@@ -657,7 +660,7 @@ async function connect(){
     serverOK=true;await flushPending();
     logs=await srv("/logs");store.set("calas3-logs",logs);
     const rc=await srv("/config");
-    if(rc&&Array.isArray(rc.puntos)&&rc.puntos.length){PUNTOS=rc.puntos;if(rc.th){Object.assign(th,rc.th);if(!rc.th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1;saveCfg()}}store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);{const c1=addNewDefaults(rc.th&&rc.th.seenDef),c2=applyFixes(rc.th&&rc.th.fixRev);if(c1||c2)saveCfg()}cur=PUNTOS.find(p=>p.id===cur.id)||PUNTOS[0]}
+    if(rc&&Array.isArray(rc.puntos)&&rc.puntos.length){PUNTOS=rc.puntos;if(rc.th){Object.assign(th,rc.th);if(!rc.th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1;saveCfg()}if(!rc.th.v7){th.go=0.7;th.warn=1.0;th.v7=1;saveCfg()}}store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th);{const c1=addNewDefaults(rc.th&&rc.th.seenDef),c2=applyFixes(rc.th&&rc.th.fixRev);if(c1||c2)saveCfg()}cur=PUNTOS.find(p=>p.id===cur.id)||PUNTOS[0]}
     else{if(rc&&rc.calas)PUNTOS.forEach(p=>{const o=rc.calas[p.id];if(o){p.orient=o.orient??p.orient;p.aper=o.aper??p.aper}});saveCfg()}
     $("aconn").textContent=`Conectado. ${logs.length} registro(s) sincronizados.`;
   }catch(e){$("aconn").textContent=/PIN/.test(e.message)?"El servidor responde, pero el PIN no es correcto.":`No se ha podido conectar: ${e.message}.`}
