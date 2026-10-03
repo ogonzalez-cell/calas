@@ -52,6 +52,8 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .cell.go{background:var(--go)}.cell.warn{background:var(--warn);color:#2A1E00}.cell.stop{background:var(--stop)}
 .cell.lowconf{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.22) 0 6px,transparent 6px 12px)}
 .cell .flag{position:absolute;top:3px;right:5px;font:700 10px Barlow,sans-serif}
+.cell .wx{position:absolute;top:3px;left:4px;font-size:12px;line-height:1}.cell.haswx{padding-top:11px}
+.wxd{font-size:13px;white-space:nowrap}
 .cell[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
 .detail dl{display:grid;grid-template-columns:1fr auto;gap:4px 14px;margin:8px 0}.detail dt{color:var(--muted)}.detail dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
 .mt{font-size:13px;min-width:0}.mt td,.mt th{padding:3px 6px}.mt td{font-variant-numeric:tabular-nums}
@@ -102,6 +104,8 @@ th.tarde{color:var(--posidonia)}
   .cell .full{display:none}
   .cell .u{display:none}
   .cell .flag{top:1px;right:2px;font-size:8px}
+  .cell .wx{top:1px;left:1px;font-size:10px}
+  .cell.haswx{padding-top:9px}
   tr.dayrow td.day small.expod{display:none}
 }
 .pick{display:none}
@@ -189,7 +193,7 @@ th.tarde{color:var(--posidonia)}
   <section class="panel">
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
-    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span></div>
+    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span></div>
     <p class="note" style="margin:0 0 6px">Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, rompiente estimada en la orilla (o periodo) y viento.</p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
@@ -253,10 +257,11 @@ const DATA={};let aemetData={};let lastUpdate=null;
 async function loadOpenMeteo(p){
   const base=`latitude=${p.lat}&longitude=${p.lon}&timezone=Europe%2FMadrid&past_days=3&forecast_days=7`;
   const get=u=>fetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("open-meteo");return r.json()});
-  const [m,w,s]=await Promise.all([
+  const [m,w,s,x]=await Promise.all([
     get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=wave_height,wave_period,wave_direction&models=${WAVE_MODELS.map(x=>x[0]).join(",")}`),
     get(`https://api.open-meteo.com/v1/forecast?${base}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&models=${WIND_MODELS.map(x=>x[0]).join(",")}`),
-    get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=sea_surface_temperature`).catch(()=>null)
+    get(`https://marine-api.open-meteo.com/v1/marine?${base}&cell_selection=sea&hourly=sea_surface_temperature`).catch(()=>null),
+    get(`https://api.open-meteo.com/v1/forecast?${base}&hourly=weather_code,temperature_2m,is_day`).catch(()=>null)
   ]);
   const CV=["swell_wave_height","swell_wave_period","swell_wave_direction","wind_wave_height","wind_wave_period","wind_wave_direction"],CV2=["secondary_swell_wave_height","secondary_swell_wave_period","secondary_swell_wave_direction"];
   // ECMWF no publica los componentes en Open-Meteo: se toman del modelo combinado (Météo-France)
@@ -272,7 +277,8 @@ async function loadOpenMeteo(p){
   const sst=s&&s.hourly&&s.hourly.sea_surface_temperature?s.hourly.sea_surface_temperature:times.map(()=>null);
   const pKeys=Object.keys(W).filter(k=>k.startsWith("precipitation"));
   const precip=W.time.map((_,i)=>median(pKeys.map(k=>W[k][i])));
-  return {times,wave,wind,sst,precip,comp,today:times[72].slice(0,10),live:true};
+  let wx=null;if(x&&x.hourly&&x.hourly.weather_code){const ix={};x.hourly.time.forEach((t,k)=>ix[t]=k);const g=a=>times.map(t=>ix[t]!=null&&a?a[ix[t]]:null);wx={code:g(x.hourly.weather_code),temp:g(x.hourly.temperature_2m),day:g(x.hourly.is_day)}}
+  return {times,wave,wind,sst,precip,comp,wx,today:times[72].slice(0,10),live:true};
 }
 async function aemetPlaya(code){
   const hk=new Date().toISOString().slice(0,13); // evita respuestas antiguas guardadas por el navegador
@@ -361,6 +367,7 @@ function evalAt(p,i,dayIdx){
   if(p.tipo==="playa"){const fD=exposure(ref.domD??ref.d,p,ref.t);
     if(ref.h>=1.4&&fD>=0.25&&lv<2){lv=2;why.push([2,`Ola de ${ref.h.toFixed(1)} m en mar abierto que entra en la cala`])}
     else if(ref.h>=0.9&&fD>=0.25&&lv<1){lv=1;why.push([1,`Ola de ${ref.h.toFixed(1)} m en mar abierto: precaución aunque la orilla parezca tranquila`])}}
+  if(D.wx&&D.wx.code[i]>=95&&lv<1){lv=1;why.push([1,"Tormenta prevista: rayos y rachas; evita estar en superficie"])}
   return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length};
 }
 const VIENTOS=["tramuntana","gregal","llevant","xaloc","migjorn","garbí","ponent","mestral"];
@@ -509,6 +516,27 @@ function compass(r){
   $("compass").innerHTML=s+`<circle r="4.5" fill="var(--ink)" stroke="var(--paper)" stroke-width="1.5"/>`;
 }
 function aemetFor(p,date,hour){const a=aemetData[p.id];if(!a||!a.dias[date])return null;const d=a.dias[date];return {lv:hour<14?d.am:d.pm,txt:hour<14?d.amTxt:d.pmTxt,tAgua:d.tAgua}}
+// ---------- tiempo (Open-Meteo, códigos WMO) ----------
+function wxInfo(c,day=1){if(c==null)return null;
+  if(c===0)return {i:day?"☀️":"🌙",t:"Despejado",r:0};
+  if(c===1)return {i:day?"🌤️":"🌙",t:"Poco nuboso",r:1};
+  if(c===2)return {i:day?"⛅":"☁️",t:"Nubes y claros",r:2};
+  if(c===3)return {i:"☁️",t:"Cubierto",r:3};
+  if(c===45||c===48)return {i:"🌫️",t:"Niebla",r:4};
+  if(c>=51&&c<=57)return {i:"🌦️",t:"Llovizna",r:5};
+  if(c>=80&&c<=82)return {i:"🌦️",t:"Chubascos",r:6};
+  if(c>=61&&c<=67)return {i:"🌧️",t:"Lluvia",r:7};
+  if((c>=71&&c<=77)||c===85||c===86)return {i:"🌨️",t:"Nieve",r:7};
+  if(c>=95)return {i:"⛈️",t:"Tormenta",r:9};
+  return null}
+// Resumen del día (8-19 h): manda lo más adverso si dura 2 h o más (la tormenta, aunque sea 1 h); si no, el cielo más frecuente
+function wxDia(D,date){if(!D.wx)return null;const hs=[];D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const h=+t.slice(11,13);if(h>=8&&h<=19)hs.push(i)}});
+  const inf=hs.map(i=>wxInfo(D.wx.code[i],1)).filter(Boolean);if(!inf.length)return null;
+  const by={};inf.forEach(x=>{(by[x.r]=by[x.r]||[]).push(x)});const rs=Object.keys(by).map(Number).sort((a,b)=>b-a);
+  let pick=null;for(const r of rs){if(r>=4&&(by[r].length>=2||r===9)){pick=by[r][0];break}}
+  if(!pick){const c=rs.filter(r=>r<4).map(r=>by[r]).sort((a,b)=>b.length-a.length)[0];pick=c?c[0]:inf[0]}
+  const tt=hs.map(i=>D.wx.temp[i]).filter(v=>v!=null);
+  return {...pick,tmin:tt.length?Math.round(Math.min(...tt)):null,tmax:tt.length?Math.round(Math.max(...tt)):null}}
 function nivelFinal(p,r,date,hr){const a=aemetFor(p,date,hr);let lv=r.lv,disc=false;if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}return {lv,disc}}
 // Ventana del día (7-20 h): el tramo seguido más largo en verde; si no hay, en ámbar; si no, mejor no bucear
 function ventanaDia(p,D,date,day){
@@ -534,12 +562,13 @@ function render(){
     const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toLocaleDateString("sv-SE");
     const ii=idx.slice(day*HOURS.length,(day+1)*HOURS.length);if(!ii.length)continue;
     const r48=rain48(D,date),sv=ii.map(i=>D.sst[i]).filter(v=>v!=null),ae=aemetFor(cur,date,8);
-    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b>${(()=>{const v=ventanaDia(cur,D,date,day);return v?`<span class="apto a${v.lv}">${v.txt}</span>`:""})()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
+    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b>${(()=>{const v=ventanaDia(cur,D,date,day);return v?`<span class="apto a${v.lv}">${v.txt}</span>`:""})()}${(()=>{const w=wxDia(D,date);return w?`<span class="wxd" title="Tiempo previsto">${w.i} ${w.t}${w.tmax!=null?` · ${w.tmin}–${w.tmax} °C`:""}</span>`:""})()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
     ii.forEach(i=>{const hr=+D.times[i].slice(11,13),r=evalAt(cur,i,day);if(!r){html+="<td></td>";return}
       const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${r.ref.h.toFixed(1)} metros, ${LVTXT[lv]}">${disc?'<span class="flag">A!</span>':""}<span class="hs">${r.ref.h.toFixed(1)}<span class="u"> m</span></span>${sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${r.ref.h.toFixed(1)} metros, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${r.ref.h.toFixed(1)}<span class="u"> m</span></span>${sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
@@ -559,6 +588,7 @@ function detail(D,idx){
    ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.domD??r.ref.d,r.ref.comps&&r.ref.f?r.ref.h*r.ref.f/Math.max(0.05,exposure(r.ref.domD??r.ref.d,cur)):r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
    ${r.W.length>1?`<dt>Viento por modelo</dt><dd>${r.W.map(x=>`${nameOf(x.m)} ${Math.round(x.w)}`).join(" · ")}</dd>`:""}
    <dt>AEMET (${A_name()})</dt><dd>${a?`oleaje ${esc(a.txt||"–")}${a.tAgua!=null?` · agua ${a.tAgua} °C`:""}`:"sin dato"}</dd>
+   ${(()=>{const w=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;return w?`<dt>Tiempo</dt><dd>${w.i} ${w.t}${D.wx.temp[i]!=null?` · ${Math.round(D.wx.temp[i])} °C`:""}</dd>`:""})()}
    <dt>Temperatura del agua</dt><dd>${D.sst[i]!=null?D.sst[i].toFixed(1)+" °C":"–"}</dd>
    <dt>Lluvia 48 h previas</dt><dd>${Math.round(r48)} mm</dd>
    ${(()=>{const ve=visEstim(cur,D,i,day);if(!ve)return "";const S=SAT[cur.id];const K=visK(cur.id);return `<dt>Visibilidad estimada</dt><dd><strong>~${Math.round(ve.v)} m</strong> (${ve.txt})${ve.why.length?" · "+esc(ve.why.join(", ")):""}${K.n>=3?` · ajustada con ${K.n} registros`:""}</dd>${S?`<dt>Copernicus</dt><dd>${S.diario?`KD490 ${S.diario.kd.toFixed(3)} m⁻¹ el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`:"sin dato reciente (nubes)"}${S.mes?` · media ${S.mes.mes.slice(5)}/${S.mes.mes.slice(0,4)}: ${S.mes.kd.toFixed(3)}`:""}${S.modelo&&S.modelo[date]?` · previsión del modelo para este día: ${S.modelo[date].toFixed(3)}`:""}</dd>`:""}`})()}
