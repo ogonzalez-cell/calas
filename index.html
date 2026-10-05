@@ -298,10 +298,12 @@ async function aemetPlaya(code){
 const oleajeLvl=t=>!t?null:/fuerte|grueso/i.test(t)?2:/moderad/i.test(t)?1:/d[eé]bil|calma/i.test(t)?0:null;
 async function loadAemet(p){
   if(!API()||!p.aemet) return null;
-  const j=await aemetPlaya(p.aemet);
+  // AEMET falla a menudo ("Error al obtener los datos"): si falla, se usa la última respuesta buena guardada (hasta 36 h)
+  let j;try{j=await aemetPlaya(p.aemet)}catch(e){const c=store.get("calas4-aemet-"+p.id,null);if(c&&Date.now()-c.t<36*3600e3)return {...c.out,stale:true,t:c.t};throw e}
   const x=Array.isArray(j)?j[0]:j,out={nombre:x.nombre,dias:{}};
   (x.prediccion?.dia||[]).forEach(d=>{const f=String(d.fecha),key=`${f.slice(0,4)}-${f.slice(4,6)}-${f.slice(6,8)}`;
     out.dias[key]={am:oleajeLvl(d.oleaje?.descripcion1),pm:oleajeLvl(d.oleaje?.descripcion2),amTxt:d.oleaje?.descripcion1,pmTxt:d.oleaje?.descripcion2,tAgua:d.tAgua?.valor1,viento:[d.viento?.descripcion1,d.viento?.descripcion2]}});
+  store.set("calas4-aemet-"+p.id,{t:Date.now(),out});
   return out;
 }
 
@@ -618,7 +620,7 @@ function render(){
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
       const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null,pl=cur.tipo==="playa";
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${(pl?r.ref.he:r.ref.h).toFixed(1)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.ref.he:r.ref.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
@@ -674,7 +676,7 @@ function detail(D,idx){
   <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}</ul>
   <p class="note">Estimación orientativa: no sustituye a mirar el mar en el propio punto ni al criterio del guía o del patrón.</p>`;
 }
-const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre):"sin playa";
+const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre)+(aemetData[cur.id].stale?" · última previsión guardada":""):cur.aemet?"AEMET no responde ahora":"sin playa asignada";
 
 // ---------- registro ----------
 function renderLogs(){
