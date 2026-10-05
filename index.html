@@ -90,6 +90,7 @@ th.tarde{color:var(--posidonia)}
 .cell small.wnd{font-size:11px}
 .cell .u{font-size:12px}
 .cell .hs{white-space:nowrap}
+.cell .wnf{position:absolute;top:3px;right:4px;font-size:11px;line-height:1}
 .cell .mob{display:none}
 .cell small{white-space:nowrap;line-height:1.25;font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:clip}
 @media (max-width:860px){
@@ -109,6 +110,7 @@ th.tarde{color:var(--posidonia)}
   .cell .u{display:none}
   .cell .flag{top:1px;right:2px;font-size:8px}
   .cell .wx{top:1px;left:1px;font-size:10px}
+  .cell .wnf{top:1px;right:1px;font-size:9px}
   .cell.haswx{padding-top:9px}
   tr.dayrow td.day small.expod{display:none}
 }
@@ -199,7 +201,7 @@ th.tarde{color:var(--posidonia)}
   <section class="panel">
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
-    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span><span><i style="background:transparent;box-shadow:inset 0 0 0 2px #7A1F14"></i>Tormenta: el mar deja entrar, el tiempo no</span></div>
+    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span><span><i style="background:transparent;box-shadow:inset 0 0 0 2px #7A1F14"></i>Tormenta: el mar deja entrar, el tiempo no</span><span>💨 Viento fuerte de tierra: no cambia el color, ojo en superficie</span></div>
     <p class="note" style="margin:0 0 6px" id="gnote"></p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
@@ -207,7 +209,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-05b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-05c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -357,10 +359,15 @@ function windEval(w,g,d,p){
     return {l,why,on:0,off:0};
   }
   const dW=angDiff(d,p.orient),kw=p.prof?kProf(p.prof,d,10):null,on=kw!=null?(kw>=0.3?w*kw:0):(dW<90?w*Math.cos(dW*Math.PI/180):0),off=kw!=null?(kw<0.15?w*(1-kw):0):(dW>90?w*Math.cos((180-dW)*Math.PI/180):0);
+  // Solo cuenta para el color el viento que entra en la cala (levanta mar en la orilla).
+  // El de tierra o de lado no cambia el color: va como aviso aparte (te empuja mar adentro en superficie).
+  const fOn=kw!=null?(kw>=0.3?kw:0):(dW<90?Math.cos(dW*Math.PI/180):0),gOn=g*fOn;
   if(on>=30)up(2,`Viento entrando a la cala de ${Math.round(on)} km/h`);else if(on>=20)up(1,`Viento entrando a la cala de ${Math.round(on)} km/h: picado en la orilla`);
-  if(off>=25)up(1,`Viento de tierra de ${Math.round(off)} km/h: deriva hacia fuera en superficie`);
-  if(g>=60)up(2,`Rachas de ${Math.round(g)} km/h`);else if(g>=45)up(1,`Rachas de ${Math.round(g)} km/h`);
-  return {l,why,on,off};
+  if(gOn>=60)up(2,`Rachas de ${Math.round(g)} km/h entrando a la cala`);else if(gOn>=45)up(1,`Rachas de ${Math.round(g)} km/h entrando a la cala`);
+  let warn=null;
+  if(fOn<0.3&&(off>=25||g>=45))warn={g:Math.round(g),w:Math.round(w),txt:`Viento ${off>=w*0.5?"de tierra":"de lado"} de ${Math.round(w)} km/h, rachas de ${Math.round(g)}: no levanta mar en la cala, pero en superficie te empuja mar adentro`};
+  if(warn)why.push([1,warn.txt+" (no cambia el color)"]);
+  return {l,why,on,off,warn};
 }
 function learnedK(pid){
   const p=PUNTOS.find(x=>x.id===pid);if(!p||p.tipo!=="playa")return {k:1,n:0};
@@ -412,7 +419,7 @@ function evalAt(p,i,dayIdx){
   // la tormenta no cambia el color (el color es solo el mar): se marca aparte como aviso del tiempo
   const storm=!!(D.wx&&D.wx.code[i]>=95);
   if(storm)why.push([2,"Tormenta prevista: el mar permite entrar, pero con rayos y rachas el tiempo aconseja no ir"]);
-  return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length,storm};
+  return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length,storm,windWarn:we.warn||null};
 }
 const VIENTOS=["tramuntana","gregal","llevant","xaloc","migjorn","garbí","ponent","mestral"];
 const vientoNombre=d=>d==null?"":VIENTOS[Math.round(d/45)%8];
@@ -593,13 +600,14 @@ function wxDia(D,date){if(!D.wx)return null;const hs=[];D.times.forEach((t,i)=>{
 function nivelFinal(p,r,date,hr){const a=aemetFor(p,date,hr);let lv=r.lv,disc=false;if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}return {lv,disc}}
 // Ventana del día (7-20 h): el tramo seguido más largo en verde; si no hay, en ámbar; si no, mejor no bucear
 function ventanaDia(p,D,date,day){
-  const hs=[];D.times.forEach((t,i)=>{if(t.slice(0,10)!==date)return;const hr=+t.slice(11,13);if(hr<7||hr>20)return;const r=evalAt(p,i,day);if(r)hs.push({hr,lv:nivelFinal(p,r,date,hr).lv,storm:r.storm})});
+  const hs=[];D.times.forEach((t,i)=>{if(t.slice(0,10)!==date)return;const hr=+t.slice(11,13);if(hr<7||hr>20)return;const r=evalAt(p,i,day);if(r)hs.push({hr,lv:nivelFinal(p,r,date,hr).lv,storm:r.storm,ww:r.windWarn})});
+  const wh=hs.filter(x=>x.ww),wt=!wh.length?"":`rachas de hasta ${Math.max(...wh.map(x=>x.ww.g))} km/h de tierra ${wh.length>=10?"casi todo el día":`entre las ${Math.min(...wh.map(x=>x.hr))} y las ${Math.max(...wh.map(x=>x.hr))+1} h`}: en superficie te empuja mar adentro`;
   const sh=hs.filter(x=>x.storm).map(x=>x.hr),st=!sh.length?"":sh.length>=10?"tormenta casi todo el día":`tormenta entre las ${Math.min(...sh)} y las ${Math.max(...sh)+1} h`;
   if(!hs.length)return null;
   const run=max=>{let best=null,s=-1;hs.forEach((x,k)=>{if(x.lv>max){s=-1;return}if(s<0||x.hr!==hs[k-1].hr+1)s=k;const len=k-s+1;if(!best||len>best.len)best={a:hs[s].hr,b:x.hr+1,len}});return best};
-  const g=run(0);if(g&&g.len>=2)return {lv:0,txt:`Apto de ${g.a} a ${g.b} h`,st};
-  const w=run(1);if(w&&w.len>=2)return {lv:1,txt:`Con precaución de ${w.a} a ${w.b} h`,st};
-  return {lv:2,txt:"Mejor no bucear",st};
+  const g=run(0);if(g&&g.len>=2)return {lv:0,txt:`Apto de ${g.a} a ${g.b} h`,st,wt};
+  const w=run(1);if(w&&w.len>=2)return {lv:1,txt:`Con precaución de ${w.a} a ${w.b} h`,st,wt};
+  return {lv:2,txt:"Mejor no bucear",st,wt};
 }
 function fmtTime(t){return t?new Date(t).toLocaleString("es-ES",{weekday:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"–"}
 
@@ -617,13 +625,13 @@ function render(){
     const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toLocaleDateString("sv-SE");
     const ii=idx.slice(day*HOURS.length,(day+1)*HOURS.length);if(!ii.length)continue;
     const r48=rain48(D,date),sv=ii.map(i=>D.sst[i]).filter(v=>v!=null),ae=aemetFor(cur,date,8);
-    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b>${(()=>{const v=ventanaDia(cur,D,date,day);return v?`<span class="apto a${v.lv}" title="Según el mar">🌊 ${v.txt}</span>${v.st?`<span class="apto a2" title="Según el tiempo">⛈️ El tiempo aconseja no ir: ${v.st}</span>`:""}`:""})()}${(()=>{const w=wxDia(D,date);return w?`<span class="wxd" title="Tiempo previsto">${w.i} ${w.t}${w.tmax!=null?` · ${w.tmin}–${w.tmax} °C`:""}</span>`:""})()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
+    html+=`<tr class="dayrow"><td class="day" colspan="${HOURS.length}"><b>${DIAS[dt.getDay()]} ${dt.getDate()}</b>${(()=>{const v=ventanaDia(cur,D,date,day);return v?`<span class="apto a${v.lv}" title="Según el mar">🌊 ${v.txt}</span>${v.st?`<span class="apto a2" title="Según el tiempo">⛈️ El tiempo aconseja no ir: ${v.st}</span>`:""}${v.wt?`<span class="apto a1" title="Según el viento">💨 Ojo al viento: ${v.wt}</span>`:""}`:""})()}${(()=>{const w=wxDia(D,date);return w?`<span class="wxd" title="Tiempo previsto">${w.i} ${w.t}${w.tmax!=null?` · ${w.tmin}–${w.tmax} °C`:""}</span>`:""})()}<small>agua ${sv.length?median(sv).toFixed(1):"–"} °C${ae&&ae.tAgua!=null?` · AEMET ${ae.tAgua}°`:""}</small>${(()=>{const e=expoDia(cur,D,ii);return e?`<span class="expo e${e.lv}" title="${esc(e.detalle)}">${e.txt}</span><small class="expod">${esc(e.detalle)}</small>`:""})()}${(()=>{const iv=ii.find(i=>+D.times[i].slice(11,13)===11)??ii[0],ve=visEstim(cur,D,iv,day);return ve?`<span class="visb v${ve.cat}" title="${esc(ve.why.join(" · ")||"sin factores que la reduzcan")}">vis. ~${Math.round(ve.v)} m · ${ve.txt}</span>`:""})()}</td></tr><tr class="hrs">`;
     ii.forEach(i=>{const hr=+D.times[i].slice(11,13),r=evalAt(cur,i,day);if(!r){html+="<td></td>";return}
       const a=aemetFor(cur,date,hr);let lv=r.lv,disc=false;
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
       const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null,pl=cur.tipo==="playa";
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.ref.he:r.ref.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small><small class="mob">${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}${r.windWarn?", viento fuerte de tierra":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}${r.windWarn&&!disc?`<span class="wnf" aria-hidden="true">💨</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.ref.he:r.ref.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small><small class="mob">${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
@@ -654,7 +662,7 @@ function explica(p,r,dt,hr){
     const rm=h<0.3?"con el mar en calma":e.mv===2?"expuesta al mar":e.mv===1?"algo expuesta al mar":"a resguardo del mar";
     res=`En resumen: ${rw} y ${rm}.`;
   }
-  return `<b>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00</b><br>💨 ${esc(lw)}<br>🌊 ${esc(lm)}${res?`<br><span class="cres">${esc(res)}</span>`:""}${r.storm?`<br>⛈️ <b>Tiempo:</b> tormenta prevista a esta hora. El mar permite entrar, pero con rayos y rachas no conviene ir.`:""}`;
+  return `<b>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00</b><br>💨 ${esc(lw)}<br>🌊 ${esc(lm)}${res?`<br><span class="cres">${esc(res)}</span>`:""}${r.windWarn?`<br>💨 <b>Ojo al viento:</b> ${esc(r.windWarn.txt)}.`:""}${r.storm?`<br>⛈️ <b>Tiempo:</b> tormenta prevista a esta hora. El mar permite entrar, pero con rayos y rachas no conviene ir.`:""}`;
 }
 function detail(D,idx){
   const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";$("cexp").innerHTML="";return}
