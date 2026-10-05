@@ -205,6 +205,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
+const APP_VERSION="2026-10-05a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -550,7 +551,7 @@ function compass(r){
   const playa=cur.tipo==="playa";
   let s=`<defs><clipPath id="cclip"><circle r="96"/></clipPath></defs>`;
   if(playa&&cur.prof){s+=`<circle r="96" fill="var(--land)"/>`;
-    for(let k=0;k<72;k++){const v=+cur.prof[k];if(!v)continue;const [sx,sy]=pt(k*5-2.6,140),[ex,ey]=pt(k*5+2.6,140);s+=`<path clip-path="url(#cclip)" d="M0 0 L${sx} ${sy} A140 140 0 0 1 ${ex} ${ey} Z" fill="var(--sea)" opacity="${v>=9?1:0.3+0.5*v/9}"/>`}}
+    for(let k=0;k<72;k++){const v=+cur.prof[k];if(v<5)continue;const [sx,sy]=pt(k*5-2.6,140),[ex,ey]=pt(k*5+2.6,140);s+=`<path clip-path="url(#cclip)" d="M0 0 L${sx} ${sy} A140 140 0 0 1 ${ex} ${ey} Z" fill="var(--sea)"/>`}}
   else if(playa){const a1=cur.orient-cur.aper,a2=cur.orient+cur.aper,[sx,sy]=pt(a1,140),[ex,ey]=pt(a2,140);
     s+=`<circle r="96" fill="var(--land)"/><path clip-path="url(#cclip)" d="M0 0 L${sx} ${sy} A140 140 0 ${cur.aper*2>180?1:0} 1 ${ex} ${ey} Z" fill="var(--sea)"/>`}
   else s+=`<circle r="96" fill="var(--sea)"/>`;
@@ -674,7 +675,7 @@ function detail(D,idx){
    <dt>Acuerdo entre modelos</dt><dd><strong>${r.agree} de ${r.n}</strong> · confianza ${Math.round(r.conf*100)} %</dd>
   </dl>
   <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}</ul>
-  <p class="note">Estimación orientativa: no sustituye a mirar el mar en el propio punto ni al criterio del guía o del patrón.</p>`;
+  <p class="note">Estimación orientativa: no sustituye a mirar el mar en el propio punto ni al criterio del guía o del patrón. Versión ${APP_VERSION}.</p>`;
 }
 const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre)+(aemetData[cur.id].stale?" · última previsión guardada":""):cur.aemet?"AEMET no responde ahora":"sin playa asignada";
 
@@ -767,7 +768,10 @@ document.addEventListener("visibilitychange",async()=>{if(document.visibilitySta
   await loadAll();
   await connect();fillEditor();render();
   if(API())await refreshAemet();
-  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{});
+// Si hay una versión más nueva publicada, recarga una vez (evita quedarse con una copia antigua en caché)
+(async()=>{try{const t=await (await fetch("index.html?nc="+Date.now(),{cache:"no-store"})).text();const m=t.match(/const APP_VERSION="([^"]+)"/);
+  if(m&&m[1]!==APP_VERSION&&sessionStorage.getItem("calas-reload")!==m[1]){sessionStorage.setItem("calas-reload",m[1]);location.reload()}}catch(e){}})();
 })();
 
 </script>
