@@ -209,7 +209,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-05c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-09a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -454,7 +454,7 @@ function expoDia(p,D,ii){
 }
 // ---------- satélite (Copernicus, vía servidor) ----------
 const SAT={},KD_L3="OCEANCOLOUR_MED_BGC_L3_NRT_009_141/cmems_obs-oc_med_bgc-transp_nrt_l3-",KD_L4="OCEANCOLOUR_MED_BGC_L4_NRT_009_142/cmems_obs-oc_med_bgc-transp_nrt_l4-multi-1km_P1M_202207/KD490";
-async function kdAt(layer,lat,lon,time){try{const j=await fetch(`${API()}/cop/valor?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&z=9&layer=${encodeURIComponent(layer)}&time=${time}`).then(r=>r.json());const v=j.respuesta?.features?.[0]?.properties?.value;return typeof v==="number"&&v>0?v:null}catch(e){return null}}
+async function kdAt(layer,lat,lon,time,z=9){try{const j=await fetch(`${API()}/cop/valor?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&z=${z}&layer=${encodeURIComponent(layer)}&time=${time}`).then(r=>r.json());const v=j.respuesta?.features?.[0]?.properties?.value;return typeof v==="number"&&v>0?v:null}catch(e){return null}}
 async function loadSat(p){
   if(!API())return null;
   const off=p.tipo==="playa"?pt2(p.orient,0.012):[0,0]; // un poco mar adentro: el píxel pegado a la costa suele venir vacío
@@ -470,7 +470,13 @@ async function loadSat(p){
   const mc=[[p.lat,p.lon],[p.lat+3*off[0],p.lon+3*off[1]],[p.lat+6*off[0],p.lon+6*off[1]]];
   await Promise.all([...Array(7)].map(async(_,d)=>{const t=new Date(hoy);t.setDate(t.getDate()+d);const ds=t.toLocaleDateString("sv-SE");
     for(const [a,b] of mc){const v=await kdAt(KD_MOD,a,b,ds+"T00:00:00Z");if(v){modelo[ds]=v;break}}}));
-  return {diario,mes,modelo};
+  // Sentinel-2 a 100 m (Copernicus HR): turbidez de la propia cala cuando hay imagen sin nubes (cada 2-5 días)
+  const HR_D="OCEANCOLOUR_MED_BGC_HR_L3_NRT_009_205/cmems_obs_oc_med_bgc_tur-spm-chl_nrt_l3-hr-mosaic_P1D-m_202107/TUR",HR_M="OCEANCOLOUR_MED_BGC_HR_L4_NRT_009_211/cmems_obs-oc_med_bgc-tur-spm-chl_nrt_l4-hr-mosaic_P1M-m_202511/TUR";
+  let hr=null;for(let d0=1;d0<=20&&!hr;d0+=5){const res=await Promise.all([0,1,2,3,4].map(async k=>{const t=new Date(hoy);t.setDate(t.getDate()-(d0+k));const ts=t.toISOString().slice(0,10)+"T00:00:00Z";
+      for(const [a,b] of cands.slice(0,2)){const v=await kdAt(HR_D,a,b,ts,10);if(v)return {tur:v,fecha:ts.slice(0,10)}}return null}));hr=res.find(Boolean)||null}
+  if(hr){for(let k=1;k<=3;k++){const t=new Date(hoy.getFullYear(),hoy.getMonth()-k,1);const ts=t.toLocaleDateString("sv-SE").slice(0,8)+"01T00:00:00Z";let v=null;
+    for(const [a,b] of cands.slice(0,2)){v=await kdAt(HR_M,a,b,ts,10);if(v)break}if(v){hr.mes=v;hr.mesF=ts.slice(0,7);break}}}
+  return {diario,mes,modelo,hr};
 }
 function pt2(deg,dist){const a=deg*Math.PI/180;return [dist*Math.cos(a),dist*Math.sin(a)/Math.cos(41.8*Math.PI/180)]}
 function satFactor(pid,dayIdx){
@@ -479,6 +485,27 @@ function satFactor(pid,dayIdx){
   const edad=Math.round((Date.now()-new Date(s.diario.fecha))/864e5)+dayIdx;const w=Math.max(0,1-Math.max(0,edad-1)/5); // pierde peso con los días
   return {f:1+(raw-1)*w,raw,s};
 }
+function hrFactor(pid,dayIdx){
+  const s=SAT[pid];if(!s||!s.hr||!s.hr.mes)return null;
+  const raw=Math.max(0.5,Math.min(1.3,Math.pow(s.hr.mes/s.hr.tur,0.5)));
+  const edad=Math.round((Date.now()-new Date(s.hr.fecha))/864e5)+dayIdx;const w=Math.max(0,1-Math.max(0,edad-2)/10);
+  return {f:1+(raw-1)*w,raw,s};
+}
+// ---------- ríos (caudal GloFAS vía Open-Meteo): las crecidas enturbian el agua de las calas cercanas ----------
+// min: caudal mínimo que se considera "normal" (m³/s), para que tras un verano seco una lluvia pequeña no parezca una crecida
+const RIOS={tordera:{n:"Tordera",lat:41.675,lon:2.725,min:3},ter:{n:"Ter",lat:42.025,lon:3.075,min:8},ridaura:{n:"Ridaura",lat:41.825,lon:3.025,min:1},daro:{n:"Daró",lat:41.975,lon:3.125,min:1}};
+const RIOS_CALA={blanes:[["tordera",1]],tossa:[["tordera",0.35]],sfg:[["ridaura",0.6]],vedell:[["ridaura",0.4]],boreas:[["ridaura",0.3]],ullastres:[["daro",0.4],["ter",0.3]],begur:[["ter",0.6],["daro",0.5]]};
+let RIO=store.get("calas4-rios",null);
+async function loadRios(){try{const ks=Object.keys(RIOS);
+  const j=await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${ks.map(k=>RIOS[k].lat).join(",")}&longitude=${ks.map(k=>RIOS[k].lon).join(",")}&daily=river_discharge&past_days=60&forecast_days=10`).then(r=>r.json());
+  const arr=Array.isArray(j)?j:[j],o={};ks.forEach((k,i)=>{const d=arr[i]&&arr[i].daily;if(!d)return;const pas=d.river_discharge.slice(0,60).filter(x=>x!=null).sort((a,b)=>a-b);
+    o[k]={t:d.time,q:d.river_discharge,base:Math.max(RIOS[k].min,pas.length?pas[Math.floor(pas.length/2)]:0)}});RIO=o;store.set("calas4-rios",o)}catch(e){}}
+function riverFactor(p,date){const L=RIOS_CALA[p.id];if(!L||!RIO)return null;let f=1;const why=[];
+  for(const [k,w] of L){const r=RIO[k];if(!r)continue;const i=r.t.indexOf(date);if(i<0)continue;
+    let qe=0;[1,0.7,0.5,0.3].forEach((c,b)=>{const q=r.q[i-b];if(q!=null)qe=Math.max(qe,q*c)}); // la mancha turbia dura unos días tras el pico
+    const A=qe/r.base;
+    if(A>=1.5){f*=Math.max(0.35,1/(1+w*0.3*(A-1.5)));why.push(`${RIOS[k].n} con ${A>=10?Math.round(A):A.toFixed(1)}× su caudal normal: agua turbia`)}}
+  return f<1?{f:Math.max(0.3,f),why}:null}
 // ---------- visibilidad estimada ----------
 // Sin satélite: parte de la visibilidad habitual del punto y la reduce por lluvia (escorrentía),
 // por el oleaje de las últimas 24 h (remueve el fondo) y por viento entrando; se ajusta con tus registros.
@@ -505,13 +532,16 @@ function visEstim(p,D,i,dayIdx=0){
   const wr=REF_WIND.map(k=>D.wind[k]).find(x=>x&&x.w[i]!=null);let fV=1;
   if(playa&&wr){const dW=angDiff(wr.d[i],p.orient);if(dW<90&&wr.w[i]*Math.cos(dW*Math.PI/180)>=20)fV=0.85}
   const fC=calma&&R<2?1.1:1;
-  const sf=satFactor(p.id,dayIdx),fS=sf?sf.f:1,mf=modelFactor(p.id,D.times[i].slice(0,10)),fM=mf?mf.f:1;
-  const K=visK(p.id).k,est=visBase(p)*fR*fW*fV*fC*fS*fM*K,v=Math.max(1,Math.min(30,est));
+  const sf0=satFactor(p.id,dayIdx),hf=hrFactor(p.id,dayIdx),useHR=!!hf&&(!sf0||hf.s.hr.fecha>=sf0.s.diario.fecha),sf=useHR?null:sf0,fS=useHR?hf.f:(sf?sf.f:1),mf=modelFactor(p.id,D.times[i].slice(0,10)),fM=mf?mf.f:1;
+  const rf=riverFactor(p,D.times[i].slice(0,10)),fRio=rf?rf.f:1;
+  const K=visK(p.id).k,est=visBase(p)*fR*fW*fV*fC*fS*fM*fRio*K,v=Math.max(1,Math.min(30,est));
   const why=[];
   if(R>=3)why.push(`${Math.round(R)} mm de lluvia en los últimos días`);
   if(fW<0.9)why.push(`mar removida (${hmax.toFixed(1)} m${playa?" dentro de la cala":""} en las últimas 24 h)`);
   if(fV<1)why.push("viento entrando a la cala");
   if(fC>1)why.push("dos días de calma sin lluvia");
+  if(rf)why.push(...rf.why);
+  if(useHR)why.push(`Sentinel-2 a 100 m (${hf.s.hr.fecha.slice(8)}/${hf.s.hr.fecha.slice(5,7)}): ${Math.abs(hf.raw-1)<0.08?"turbidez normal en la cala":hf.raw<1?"agua de la cala más turbia que su media":"agua de la cala más clara que su media"}`);
   if(sf&&Math.abs(sf.raw-1)>=0.08)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}): agua ${sf.raw<1?"más turbia":"más clara"} que la media del mes`);
   else if(sf)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}): transparencia normal`);
   if(mf)why.push(mf.f<0.95?`el modelo de Copernicus prevé agua de fondo más turbia (kd ${mf.kd.toFixed(3)})`:mf.f>1.05?`el modelo de Copernicus prevé agua de fondo muy limpia (kd ${mf.kd.toFixed(3)})`:`agua de fondo limpia según el modelo de Copernicus`);
@@ -768,6 +798,7 @@ async function loadAll(){
   loading=true;$("refresh").disabled=true;$("refresh").textContent="Actualizando…";
   await loadPoint(cur);render();
   for(const p of PUNTOS){if(p!==cur){await loadPoint(p)}}
+  await loadRios();
   lastUpdate=Date.now();loading=false;$("refresh").disabled=false;$("refresh").textContent="Actualizar";render();
 }
 $("refresh").onclick=async()=>{await loadAll();if(API())await refreshAemet()};
