@@ -209,7 +209,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-09b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-09c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -503,17 +503,26 @@ async function loadRios(){try{const ks=Object.keys(RIOS);
   const j=await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${ks.map(k=>RIOS[k].lat).join(",")}&longitude=${ks.map(k=>RIOS[k].lon).join(",")}&daily=river_discharge&past_days=60&forecast_days=10`).then(r=>r.json());
   const arr=Array.isArray(j)?j:[j],o={};ks.forEach((k,i)=>{const d=arr[i]&&arr[i].daily;if(!d)return;const pas=d.river_discharge.slice(0,60).filter(x=>x!=null).sort((a,b)=>a-b);
     o[k]={t:d.time,q:d.river_discharge,base:Math.max(RIOS[k].min,pas.length?pas[Math.floor(pas.length/2)]:0)}});
-  // corriente superficial frente a cada desembocadura (Météo-France SMOC vía Open-Meteo): decide hacia dónde viaja la mancha
-  try{const c=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${ks.map(k=>RIOS[k].mlat).join(",")}&longitude=${ks.map(k=>RIOS[k].mlon).join(",")}&hourly=ocean_current_velocity,ocean_current_direction&past_days=4&forecast_days=8&cell_selection=sea&timezone=Europe%2FMadrid`).then(r=>r.json());
-    const ca=Array.isArray(c)?c:[c];ks.forEach((k,i)=>{const h=ca[i]&&ca[i].hourly;if(h&&o[k])o[k].cur={t:h.time,v:h.ocean_current_velocity,d:h.ocean_current_direction}})}catch(e){}
+  // Corriente superficial a lo largo del camino de cada río hasta cada cala (Météo-France SMOC vía Open-Meteo):
+  // 4 puntos por trayecto (desembocadura, 1/3, 2/3 y frente a la cala), porque la corriente cambia de un tramo de costa a otro
+  try{const pts=[],idx={},paths={};
+    for(const p of PUNTOS)for(const k of ks){const R=RIOS[k];if(distKm(R.mlat,R.mlon,p.lat,p.lon)>25)continue;const L=[];
+      for(const f of [0,0.33,0.66,0.95]){const la=R.mlat+(p.lat-R.mlat)*f,lo=R.mlon+(p.lon-R.mlon)*f,key=la.toFixed(3)+","+lo.toFixed(3);if(!(key in idx)){idx[key]=pts.length;pts.push([la,lo])}L.push(idx[key])}
+      paths[p.id+"|"+k]=L}
+    const ser=[];for(let a=0;a<pts.length;a+=40){const ch=pts.slice(a,a+40);
+      const c=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${ch.map(x=>x[0].toFixed(3)).join(",")}&longitude=${ch.map(x=>x[1].toFixed(3)).join(",")}&hourly=ocean_current_velocity,ocean_current_direction&past_days=4&forecast_days=8&cell_selection=sea&timezone=Europe%2FMadrid`).then(r=>r.json());
+      (Array.isArray(c)?c:[c]).forEach(x=>{const h=x&&x.hourly;ser.push(h?{t:h.time,v:h.ocean_current_velocity,d:h.ocean_current_direction}:null)})}
+    o._cur={paths,ser}}catch(e){}
   RIO=o;store.set("calas4-rios",o)}catch(e){}}
 // ¿Llega la mancha del río a la cala? Media de las últimas 60 h de corriente + 3 % del viento (deriva) en la dirección desembocadura→cala
-function alcance(k,p,date){const R=RIOS[k],r=RIO[k],d=distKm(R.mlat,R.mlon,p.lat,p.lon),b=rumbo(R.mlat,R.mlon,p.lat,p.lon);
-  if(!r||!r.cur)return {reach:d<5?0.6:0.3,d,known:false};
-  const end=r.cur.t.indexOf(date+"T12:00");if(end<0)return {reach:d<5?0.6:0.3,d,known:false};
+function alcance(k,p,date){const R=RIOS[k],d=distKm(R.mlat,R.mlon,p.lat,p.lon),b=rumbo(R.mlat,R.mlon,p.lat,p.lon);
+  const C=RIO&&RIO._cur,L=C&&C.paths[p.id+"|"+k],S=L?L.map(i=>C.ser[i]).filter(Boolean):[];
+  if(!S.length)return {reach:d<5?0.6:0.3,d,known:false};
+  const end=S[0].t.indexOf(date+"T12:00");if(end<0)return {reach:d<5?0.6:0.3,d,known:false};
   const D=DATA[p.id],wr=D&&REF_WIND.map(x=>D.wind[x]).find(Boolean);let sum=0,n=0;
-  for(let h=Math.max(0,end-60);h<=end;h++){const v=r.cur.v[h],dir=r.cur.d[h];if(v==null||dir==null)continue;let u=v*Math.cos((dir-b)*Math.PI/180);
-    if(wr&&D){const wi=D.times.indexOf(r.cur.t[h]);if(wi>=0&&wr.w[wi]!=null&&wr.d[wi]!=null)u+=0.03*wr.w[wi]*Math.cos((wr.d[wi]+180-b)*Math.PI/180)}sum+=u;n++}
+  for(let h=Math.max(0,end-60);h<=end;h++){let us=0,m=0;for(const c of S){const v=c.v[h],dir=c.d[h];if(v==null||dir==null)continue;us+=v*Math.cos((dir-b)*Math.PI/180);m++}
+    if(!m)continue;let u=us/m; // media de la corriente a lo largo de todo el trayecto río→cala
+    if(wr&&D){const wi=D.times.indexOf(S[0].t[h]);if(wi>=0&&wr.w[wi]!=null&&wr.d[wi]!=null)u+=0.03*wr.w[wi]*Math.cos((wr.d[wi]+180-b)*Math.PI/180)}sum+=u;n++}
   if(!n)return {reach:d<5?0.6:0.3,d,known:false};const u=sum/n,cubre=u*60;
   let reach=u<=0?0:Math.min(1,cubre/d);if(d<3)reach=Math.max(reach,0.5);return {reach,d,u,known:true}}
 function riverFactor(p,date){if(!RIO)return null;let f=1;const why=[];
