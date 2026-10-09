@@ -209,7 +209,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-09a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-09b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -493,18 +493,38 @@ function hrFactor(pid,dayIdx){
 }
 // ---------- ríos (caudal GloFAS vía Open-Meteo): las crecidas enturbian el agua de las calas cercanas ----------
 // min: caudal mínimo que se considera "normal" (m³/s), para que tras un verano seco una lluvia pequeña no parezca una crecida
-const RIOS={tordera:{n:"Tordera",lat:41.675,lon:2.725,min:3},ter:{n:"Ter",lat:42.025,lon:3.075,min:8},ridaura:{n:"Ridaura",lat:41.825,lon:3.025,min:1},daro:{n:"Daró",lat:41.975,lon:3.125,min:1}};
-const RIOS_CALA={blanes:[["tordera",1]],tossa:[["tordera",0.35]],sfg:[["ridaura",0.6]],vedell:[["ridaura",0.4]],boreas:[["ridaura",0.3]],ullastres:[["daro",0.4],["ter",0.3]],begur:[["ter",0.6],["daro",0.5]]};
+// lat/lon: celda del modelo GloFAS con el caudal del río; mlat/mlon: desembocadura (de ahí sale la mancha turbia)
+const RIOS={tordera:{n:"Tordera",lat:41.675,lon:2.725,min:3,mlat:41.659,mlon:2.784},ter:{n:"Ter",lat:42.025,lon:3.075,min:8,mlat:42.046,mlon:3.204},
+  ridaura:{n:"Ridaura",lat:41.825,lon:3.025,min:1,mlat:41.813,mlon:3.069},daro:{n:"Daró",lat:41.975,lon:3.125,min:1,mlat:42.005,mlon:3.200}};
+const distKm=(a1,o1,a2,o2)=>{const ky=110.57,kx=111.32*Math.cos((a1+a2)/2*Math.PI/180);return Math.hypot((a2-a1)*ky,(o2-o1)*kx)};
+const rumbo=(a1,o1,a2,o2)=>{const kx=Math.cos((a1+a2)/2*Math.PI/180);return (Math.atan2((o2-o1)*kx,a2-a1)*180/Math.PI+360)%360};
 let RIO=store.get("calas4-rios",null);
 async function loadRios(){try{const ks=Object.keys(RIOS);
   const j=await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${ks.map(k=>RIOS[k].lat).join(",")}&longitude=${ks.map(k=>RIOS[k].lon).join(",")}&daily=river_discharge&past_days=60&forecast_days=10`).then(r=>r.json());
   const arr=Array.isArray(j)?j:[j],o={};ks.forEach((k,i)=>{const d=arr[i]&&arr[i].daily;if(!d)return;const pas=d.river_discharge.slice(0,60).filter(x=>x!=null).sort((a,b)=>a-b);
-    o[k]={t:d.time,q:d.river_discharge,base:Math.max(RIOS[k].min,pas.length?pas[Math.floor(pas.length/2)]:0)}});RIO=o;store.set("calas4-rios",o)}catch(e){}}
-function riverFactor(p,date){const L=RIOS_CALA[p.id];if(!L||!RIO)return null;let f=1;const why=[];
-  for(const [k,w] of L){const r=RIO[k];if(!r)continue;const i=r.t.indexOf(date);if(i<0)continue;
+    o[k]={t:d.time,q:d.river_discharge,base:Math.max(RIOS[k].min,pas.length?pas[Math.floor(pas.length/2)]:0)}});
+  // corriente superficial frente a cada desembocadura (Météo-France SMOC vía Open-Meteo): decide hacia dónde viaja la mancha
+  try{const c=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${ks.map(k=>RIOS[k].mlat).join(",")}&longitude=${ks.map(k=>RIOS[k].mlon).join(",")}&hourly=ocean_current_velocity,ocean_current_direction&past_days=4&forecast_days=8&cell_selection=sea&timezone=Europe%2FMadrid`).then(r=>r.json());
+    const ca=Array.isArray(c)?c:[c];ks.forEach((k,i)=>{const h=ca[i]&&ca[i].hourly;if(h&&o[k])o[k].cur={t:h.time,v:h.ocean_current_velocity,d:h.ocean_current_direction}})}catch(e){}
+  RIO=o;store.set("calas4-rios",o)}catch(e){}}
+// ¿Llega la mancha del río a la cala? Media de las últimas 60 h de corriente + 3 % del viento (deriva) en la dirección desembocadura→cala
+function alcance(k,p,date){const R=RIOS[k],r=RIO[k],d=distKm(R.mlat,R.mlon,p.lat,p.lon),b=rumbo(R.mlat,R.mlon,p.lat,p.lon);
+  if(!r||!r.cur)return {reach:d<5?0.6:0.3,d,known:false};
+  const end=r.cur.t.indexOf(date+"T12:00");if(end<0)return {reach:d<5?0.6:0.3,d,known:false};
+  const D=DATA[p.id],wr=D&&REF_WIND.map(x=>D.wind[x]).find(Boolean);let sum=0,n=0;
+  for(let h=Math.max(0,end-60);h<=end;h++){const v=r.cur.v[h],dir=r.cur.d[h];if(v==null||dir==null)continue;let u=v*Math.cos((dir-b)*Math.PI/180);
+    if(wr&&D){const wi=D.times.indexOf(r.cur.t[h]);if(wi>=0&&wr.w[wi]!=null&&wr.d[wi]!=null)u+=0.03*wr.w[wi]*Math.cos((wr.d[wi]+180-b)*Math.PI/180)}sum+=u;n++}
+  if(!n)return {reach:d<5?0.6:0.3,d,known:false};const u=sum/n,cubre=u*60;
+  let reach=u<=0?0:Math.min(1,cubre/d);if(d<3)reach=Math.max(reach,0.5);return {reach,d,u,known:true}}
+function riverFactor(p,date){if(!RIO)return null;let f=1;const why=[];
+  for(const k of Object.keys(RIOS)){const r=RIO[k];if(!r)continue;const i=r.t.indexOf(date);if(i<0)continue;
+    const dk=distKm(RIOS[k].mlat,RIOS[k].mlon,p.lat,p.lon);if(dk>25)continue;
     let qe=0;[1,0.7,0.5,0.3].forEach((c,b)=>{const q=r.q[i-b];if(q!=null)qe=Math.max(qe,q*c)}); // la mancha turbia dura unos días tras el pico
     const A=qe/r.base;
-    if(A>=1.5){f*=Math.max(0.35,1/(1+w*0.3*(A-1.5)));why.push(`${RIOS[k].n} con ${A>=10?Math.round(A):A.toFixed(1)}× su caudal normal: agua turbia`)}}
+    if(A<1.5)continue;
+    const al=alcance(k,p,date),w=Math.exp(-al.d/12)*al.reach,An=A>=10?Math.round(A):A.toFixed(1),km=Math.round(al.d);
+    if(w<0.1){why.push(`${RIOS[k].n} crecido (${An}× lo normal), pero ${al.known?"la corriente aleja la mancha":"queda lejos"} (desembocadura a ${km} km)`);continue}
+    f*=Math.max(0.35,1/(1+w*0.3*(A-1.5)));why.push(`${RIOS[k].n} con ${An}× su caudal normal y ${al.known?"la corriente trae la mancha hacia aquí":"cerca de la cala"} (desembocadura a ${km} km): agua turbia`)}
   return f<1?{f:Math.max(0.3,f),why}:null}
 // ---------- visibilidad estimada ----------
 // Sin satélite: parte de la visibilidad habitual del punto y la reduce por lluvia (escorrentía),
