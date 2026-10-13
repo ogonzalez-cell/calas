@@ -91,6 +91,9 @@ th.tarde{color:var(--posidonia)}
 .cell .u{font-size:12px}
 .cell .hs{white-space:nowrap}
 .cell .wnf{position:absolute;top:3px;right:4px;font-size:11px;line-height:1}
+.cell .rch,.legend .rch{position:absolute;bottom:3px;right:3px;width:15px;height:15px;border-radius:50%;font:700 10px/12px Barlow,sans-serif;text-align:center;color:#fff;border:1.5px solid #fff;box-sizing:border-box}
+.rch.r0{background:var(--go)}.rch.r1{background:var(--warn);color:#2A1E00}.rch.r2{background:var(--stop)}
+.legend .rch{position:static;display:inline-block;vertical-align:-3px;margin-right:2px;border-color:var(--line)}
 .cell .mob{display:none}
 .cell small{white-space:nowrap;line-height:1.25;font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:clip}
 @media (max-width:860px){
@@ -111,6 +114,7 @@ th.tarde{color:var(--posidonia)}
   .cell .flag{top:1px;right:2px;font-size:8px}
   .cell .wx{top:1px;left:1px;font-size:10px}
   .cell .wnf{top:1px;right:1px;font-size:9px}
+  .cell .rch{width:12px;height:12px;font-size:8px;line-height:9px;bottom:1px;right:1px;border-width:1px}
   .cell.haswx{padding-top:9px}
   tr.dayrow td.day small.expod{display:none}
 }
@@ -202,7 +206,7 @@ th.tarde{color:var(--posidonia)}
   <section class="panel">
     <div class="row" style="align-items:center"><h2 style="margin:0">Próximos 7 días</h2><div style="flex:0"><button class="btn ghost" id="refresh">Actualizar</button></div></div>
     <p class="status" id="status">Cargando previsiones…</p>
-    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span><span><i style="background:transparent;box-shadow:inset 0 0 0 2px #7A1F14"></i>Tormenta: el mar deja entrar, el tiempo no</span><span>💨 Viento fuerte de tierra: no cambia el color, ojo en superficie</span><span>↩️ Rechupe en la orilla</span></div>
+    <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span><span><i style="background:transparent;box-shadow:inset 0 0 0 2px #7A1F14"></i>Tormenta: el mar deja entrar, el tiempo no</span><span>💨 Viento fuerte de tierra: no cambia el color, ojo en superficie</span><span>Rechupe en la orilla: <i class="rch r0">↩</i>bajo <i class="rch r1">↩</i>medio <i class="rch r2">↩</i>fuerte</span></div>
     <p class="note" style="margin:0 0 6px" id="gnote"></p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
@@ -210,7 +214,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-13b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-13c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -375,7 +379,7 @@ function windEval(w,g,d,p){
 // y la pendiente de la playa: cuanto más sube el agua, con más fuerza vuelve. Pendientes estimadas por tipo de playa; se ajustan con tus registros.
 // Umbrales calibrados con Mar Menuda, 10/10/2026 (0,3 m del NE con mar de fondo de ~6 s: rechupe al entrar y salida difícil).
 const PENDIENTE={tossa:0.12,sfg:0.10,blanes:0.08,begur:0.14,vedell:0.12};
-const RECH_TXT=["bajo","moderado","fuerte"];
+const RECH_TXT=["bajo","medio","fuerte"];
 const rechTxt=c=>`olas cada ${Math.round(c.T)} s en una playa de pendiente ${c.tb>=0.13?"fuerte":c.tb>=0.1?"media-alta":"media"}: el agua sube ~${c.rv.toFixed(2)} m por la playa${c.lv===0?" y vuelve sin fuerza.":c.lv===1?" y vuelve con fuerza: entrada y salida algo más difíciles; sal con la ola, aleteando.":"; vuelve con mucha fuerza: cuesta salir. Espera a que pase la serie y sal con la ola, aleteando fuerte."}`;
 const rechLv=r2=>r2>=0.3?2:r2>=0.15?1:0;
 function rechupeK(pid){const L=logs.filter(x=>x.cala===pid&&x.rech!=null&&x.pred&&x.pred.r2!=null);if(L.length<2)return {k:1,n:L.length};
@@ -429,7 +433,7 @@ function evalAt(p,i,dayIdx){
   if(ref.t>=8&&ref.h>(p.tipo==="barco"?0.6:0.3)){lv=Math.max(lv,1);why.push([1,`Periodo largo (${ref.t.toFixed(1)} s): mar de fondo con fuerza${p.tipo==="playa"?" y posible resaca":""}`])}
   if(we.l>lv)lv=we.l;why.push(...we.why);
   const rch=rechupe(p,{bl,ref});
-  if(rch&&rch.lv>0){lv=Math.max(lv,rch.lv===2&&rch.rv>=0.5?2:1);why.push([rch.lv,`Rechupe ${rch.lv===2?"fuerte":"moderado"} en la orilla: olas cada ${Math.round(rch.T)} s en playa empinada; el agua sube ~${rch.rv.toFixed(2)} m por la playa y vuelve con fuerza (entrada y salida más difíciles)`])}
+  if(rch&&rch.lv>0){lv=Math.max(lv,rch.lv===2&&rch.rv>=0.5?2:1);why.push([rch.lv,`Rechupe ${rch.lv===2?"fuerte":"medio"} en la orilla: olas cada ${Math.round(rch.T)} s en playa empinada; el agua sube ~${rch.rv.toFixed(2)} m por la playa y vuelve con fuerza (entrada y salida más difíciles)`])}
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
   const agree=per.filter(x=>x.lv===lvBase).length;
   const hs=per.map(x=>p.tipo==="playa"?(x.he??x.h):x.h),spread=Math.max(...hs)-Math.min(...hs); // en playa, la dispersión que importa es la de la ola que llega a la cala
@@ -717,7 +721,7 @@ function render(){
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
       const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null,pl=cur.tipo==="playa";
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.bl.he:r.bl.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}${r.windWarn?", viento fuerte de tierra":""}${r.rch&&r.rch.lv>0?`, rechupe ${RECH_TXT[r.rch.lv]}`:""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}${r.windWarn&&!disc?`<span class="wnf" aria-hidden="true">💨</span>`:r.rch&&r.rch.lv>0&&!disc?`<span class="wnf" aria-hidden="true">↩️</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.bl.he:r.bl.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${mrango(r.bl)} ${card(r.ref.domD??r.ref.d)}</small><small class="mob">${mrango(r.bl)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.bl.he:r.bl.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}${r.windWarn?", viento fuerte de tierra":""}${pl&&r.rch?`, rechupe ${RECH_TXT[r.rch.lv]}`:""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}${r.windWarn&&!disc?`<span class="wnf" aria-hidden="true">💨</span>`:""}${pl&&r.rch?`<span class="rch r${r.rch.lv}" aria-hidden="true">↩</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.bl.he:r.bl.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${mrango(r.bl)} ${card(r.ref.domD??r.ref.d)}</small><small class="mob">${mrango(r.bl)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
