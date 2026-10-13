@@ -51,7 +51,7 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .cell small{font:400 11px Barlow,sans-serif;opacity:.92}
 .cell.go{background:var(--go)}.cell.warn{background:var(--warn);color:#2A1E00}.cell.stop{background:var(--stop)}
 .cell.lowconf{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.22) 0 6px,transparent 6px 12px)}
-.cell .flag{position:absolute;top:3px;right:5px;font:700 10px Barlow,sans-serif}
+.cell .flag{position:absolute;top:3px;right:21px;font:700 10px Barlow,sans-serif}
 .cell .wx{position:absolute;top:3px;left:4px;font-size:12px;line-height:1}.cell.haswx{padding-top:11px}
 .wxd{font-size:13px;white-space:nowrap}
 .cell[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
@@ -90,8 +90,8 @@ th.tarde{color:var(--posidonia)}
 .cell small.wnd{font-size:11px}
 .cell .u{font-size:12px}
 .cell .hs{white-space:nowrap}
-.cell .wnf{position:absolute;top:3px;right:4px;font-size:11px;line-height:1}
-.cell .rch,.legend .rch{position:absolute;bottom:3px;right:3px;width:15px;height:15px;border-radius:50%;font:700 10px/12px Barlow,sans-serif;text-align:center;color:#fff;border:1.5px solid #fff;box-sizing:border-box}
+.cell .wnf{position:absolute;top:3px;right:21px;font-size:11px;line-height:1}
+.cell .rch,.legend .rch{position:absolute;top:3px;right:3px;width:15px;height:15px;border-radius:50%;font:700 10px/12px Barlow,sans-serif;text-align:center;color:#fff;border:1.5px solid #fff;box-sizing:border-box}
 .rch.r0{background:var(--go)}.rch.r1{background:var(--warn);color:#2A1E00}.rch.r2{background:var(--stop)}
 .legend .rch{position:static;display:inline-block;vertical-align:-3px;margin-right:2px;border-color:var(--line)}
 .cell .mob{display:none}
@@ -111,10 +111,10 @@ th.tarde{color:var(--posidonia)}
   .cell .full{display:none}
   .cell .mob{display:block;font-size:9.5px;font-weight:600;opacity:1}
   .cell .u{display:none}
-  .cell .flag{top:1px;right:2px;font-size:8px}
+  .cell .flag{top:1px;right:14px;font-size:8px}
   .cell .wx{top:1px;left:1px;font-size:10px}
-  .cell .wnf{top:1px;right:1px;font-size:9px}
-  .cell .rch{width:12px;height:12px;font-size:8px;line-height:9px;bottom:1px;right:1px;border-width:1px}
+  .cell .wnf{top:1px;right:14px;font-size:9px}
+  .cell .rch{width:12px;height:12px;font-size:8px;line-height:9px;top:1px;right:1px;border-width:1px}
   .cell.haswx{padding-top:9px}
   tr.dayrow td.day small.expod{display:none}
 }
@@ -214,7 +214,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-13c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-13d"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
