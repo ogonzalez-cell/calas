@@ -181,6 +181,7 @@ th.tarde{color:var(--posidonia)}
       <div class="ctl"><label for="p-name">Nombre</label><input type="text" id="p-name"></div>
       <div class="row"><div><label class="note" for="p-tipo">Tipo</label><select id="p-tipo"><option value="playa">Entrada desde playa</option><option value="barco">Salida en barco</option></select></div></div>
       <div class="row" style="margin-top:8px"><div><label class="note" for="p-lat">Latitud</label><input type="number" id="p-lat" step="0.0001"></div><div><label class="note" for="p-lon">Longitud</label><input type="number" id="p-lon" step="0.0001"></div></div>
+      <div class="row"><div><label class="note" for="p-acc">Acceso a la cala</label><select id="p-acc"><option value="facil">Fácil (arena, poca pendiente)</option><option value="normal">Normal</option><option value="dificil">Difícil (rocas, mal acceso)</option></select></div></div>
       <div class="ctl"><label for="p-vis">Visibilidad habitual con buen tiempo (m)</label><input type="number" id="p-vis" min="2" max="40"></div>
       <div class="ctl"><label for="p-aemet">Código de playa AEMET de referencia</label><input type="text" id="p-aemet" inputmode="numeric" placeholder="p. ej. 1720207"></div>
       <div class="row"><div><label class="note" for="p-muni">Buscar por municipio (código INE)</label><input type="text" id="p-muni" inputmode="numeric" placeholder="p. ej. 17202"></div><div style="flex:0"><button class="btn ghost" id="p-find">Buscar</button></div></div>
@@ -214,7 +215,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-13d"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-13e"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -379,8 +380,11 @@ function windEval(w,g,d,p){
 // y la pendiente de la playa: cuanto más sube el agua, con más fuerza vuelve. Pendientes estimadas por tipo de playa; se ajustan con tus registros.
 // Umbrales calibrados con Mar Menuda, 10/10/2026 (0,3 m del NE con mar de fondo de ~6 s: rechupe al entrar y salida difícil).
 const PENDIENTE={tossa:0.12,sfg:0.10,blanes:0.08,begur:0.14,vedell:0.12};
+// Acceso a la cala: con rocas o mal acceso, el mismo rechupe es mucho más peligroso (Port Salvi)
+const ACCESO_DEF={sfg:"dificil"},ACCESO_K={facil:0.8,normal:1,dificil:2};
+const acceso=p=>p.acceso||ACCESO_DEF[p.id]||"normal";
 const RECH_TXT=["bajo","medio","fuerte"];
-const rechTxt=c=>`olas cada ${Math.round(c.T)} s en una playa de pendiente ${c.tb>=0.13?"fuerte":c.tb>=0.1?"media-alta":"media"}: el agua sube ~${c.rv.toFixed(2)} m por la playa${c.lv===0?" y vuelve sin fuerza.":c.lv===1?" y vuelve con fuerza: entrada y salida algo más difíciles; sal con la ola, aleteando.":"; vuelve con mucha fuerza: cuesta salir. Espera a que pase la serie y sal con la ola, aleteando fuerte."}`;
+const rechTxt=c=>`${c.ac==="dificil"?"Acceso difícil, cuenta el doble. ":""}olas cada ${Math.round(c.T)} s en una playa de pendiente ${c.tb>=0.13?"fuerte":c.tb>=0.1?"media-alta":"media"}: el agua sube ~${c.rv.toFixed(2)} m por la playa${c.lv===0?" y vuelve sin fuerza.":c.lv===1?" y vuelve con fuerza: entrada y salida algo más difíciles; sal con la ola, aleteando.":"; vuelve con mucha fuerza: cuesta salir. Espera a que pase la serie y sal con la ola, aleteando fuerte."}`;
 const rechLv=r2=>r2>=0.3?2:r2>=0.15?1:0;
 function rechupeK(pid){const L=logs.filter(x=>x.cala===pid&&x.rech!=null&&x.pred&&x.pred.r2!=null);if(L.length<2)return {k:1,n:L.length};
   let best={k:1,e:1e9};for(let k=0.5;k<=3.001;k+=0.1){let e=0;L.forEach(x=>{e+=Math.abs(rechLv(x.pred.r2*k)-x.rech)});if(e<best.e-1e-9)best={k,e}}return {k:best.k,n:L.length}}
@@ -388,7 +392,8 @@ function rechupe(p,r){if(p.tipo!=="playa"||!r.bl||r.bl.he==null)return null;
   const tb=p.pend||PENDIENTE[p.id]||0.1,H=Math.max(0.03,r.bl.he);
   const cs=(r.ref.comps||[]).filter(c=>c.e>=0.01&&c.t);const T=cs.length?Math.max(...cs.map(c=>c.t)):(r.ref.t||4); // el periodo más largo que entra en la cala
   const L0=1.56*T*T,s=Math.sqrt(H*L0),r2=1.1*(0.35*tb*s+0.5*Math.sqrt(H*L0*(0.563*tb*tb+0.004)));
-  const rv=r2*rechupeK(p.id).k;return {r2,rv,lv:rechLv(rv),T,tb}}
+  const ac=acceso(p),rv=r2*rechupeK(p.id).k*ACCESO_K[ac];
+  return {r2,rv,lv:T<4.5?0:rechLv(rv),T,tb,ac}} // con mar de viento corto (<4,5 s) el agua apenas vuelve con fuerza
 function learnedK(pid){
   const p=PUNTOS.find(x=>x.id===pid);if(!p||p.tipo!=="playa")return {k:1,n:0};
   const L=logs.filter(x=>x.cala===pid&&x.pred&&x.pred.h!=null);
@@ -433,7 +438,7 @@ function evalAt(p,i,dayIdx){
   if(ref.t>=8&&ref.h>(p.tipo==="barco"?0.6:0.3)){lv=Math.max(lv,1);why.push([1,`Periodo largo (${ref.t.toFixed(1)} s): mar de fondo con fuerza${p.tipo==="playa"?" y posible resaca":""}`])}
   if(we.l>lv)lv=we.l;why.push(...we.why);
   const rch=rechupe(p,{bl,ref});
-  if(rch&&rch.lv>0){lv=Math.max(lv,rch.lv===2&&rch.rv>=0.5?2:1);why.push([rch.lv,`Rechupe ${rch.lv===2?"fuerte":"medio"} en la orilla: olas cada ${Math.round(rch.T)} s en playa empinada; el agua sube ~${rch.rv.toFixed(2)} m por la playa y vuelve con fuerza (entrada y salida más difíciles)`])}
+  if(rch&&rch.lv>0){lv=Math.max(lv,rch.lv===2&&(rch.rv>=0.5||rch.ac==="dificil")?2:1);why.push([rch.lv,`Rechupe ${rch.lv===2?"fuerte":"medio"} en la orilla${rch.ac==="dificil"?" (acceso difícil: penaliza el doble)":""}: olas cada ${Math.round(rch.T)} s en playa empinada; el agua sube ~${rch.rv.toFixed(2)} m por la playa y vuelve con fuerza (entrada y salida más difíciles)`])}
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
   const agree=per.filter(x=>x.lv===lvBase).length;
   const hs=per.map(x=>p.tipo==="playa"?(x.he??x.h):x.h),spread=Math.max(...hs)-Math.min(...hs); // en playa, la dispersión que importa es la de la ola que llega a la cala
@@ -802,12 +807,12 @@ $("lg-export").onclick=()=>{const b=new Blob([JSON.stringify({puntos:PUNTOS,logs
 $("lg-import").onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(Array.isArray(j.logs)){j.logs.forEach(x=>{if(!x.id)x.id=newId();if(!logs.some(l=>l.id===x.id)){logs.push(x);pending.push(x)}});store.set("calas3-logs",logs);store.set("calas3-pending",pending);flushPending()}$("lg-msg").textContent=`Importados. Total: ${logs.length} registros.`;render()}catch(err){$("lg-msg").textContent="El archivo no es un export válido de esta app."}};
 
 // ---------- editor de puntos ----------
-function fillEditor(){$("p-vis").value=visBase(cur);$("p-name").value=cur.name;$("p-tipo").value=cur.tipo;$("p-lat").value=cur.lat;$("p-lon").value=cur.lon;$("p-aemet").value=cur.aemet||"";$("p-msg").textContent="";$("p-found").textContent=""}
+function fillEditor(){$("p-vis").value=visBase(cur);$("p-acc").value=acceso(cur);$("p-name").value=cur.name;$("p-tipo").value=cur.tipo;$("p-lat").value=cur.lat;$("p-lon").value=cur.lon;$("p-aemet").value=cur.aemet||"";$("p-msg").textContent="";$("p-found").textContent=""}
 $("p-save").onclick=async()=>{
   const lat=+$("p-lat").value,lon=+$("p-lon").value;
   if(!$("p-name").value.trim()||isNaN(lat)||isNaN(lon)||Math.abs(lat)>90||Math.abs(lon)>180){$("p-msg").textContent="Revisa el nombre y las coordenadas (grados decimales, p. ej. 41.8850 y 3.2050).";return}
   const moved=lat!==cur.lat||lon!==cur.lon;
-  Object.assign(cur,{name:$("p-name").value.trim(),tipo:$("p-tipo").value,lat,lon,aemet:$("p-aemet").value.trim(),vis:Math.max(2,Math.min(40,+$("p-vis").value||visBase(cur)))});
+  Object.assign(cur,{name:$("p-name").value.trim(),tipo:$("p-tipo").value,lat,lon,aemet:$("p-aemet").value.trim(),acceso:$("p-acc").value,vis:Math.max(2,Math.min(40,+$("p-vis").value||visBase(cur)))});
   if(cur.tipo==="playa"&&(moved||!cur.prof)){$("p-msg").textContent="Calculando la boca de la cala sobre la costa real…";
     try{const pr=await perfilCosta(lat,lon);if(pr&&/[5-9]/.test(pr)){cur.prof=pr;Object.assign(cur,bocaDe(pr)||{})}else delete cur.prof}catch(e){if(moved)delete cur.prof}}
   saveCfg();$("p-msg").textContent=cur.tipo==="playa"?(cur.prof?"Punto guardado. Boca calculada sobre la costa real.":"Punto guardado. No he podido calcular la boca (sin conexión o el punto no está junto al mar): ajústala a mano."):"Punto guardado.";
