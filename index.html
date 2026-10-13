@@ -209,7 +209,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-09c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-12a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -401,13 +401,19 @@ function evalAt(p,i,dayIdx){
   const W=Object.entries(D.wind).map(([m,x])=>({m,w:x.w[i],g:x.g[i],d:x.d[i]})).filter(x=>x.w!=null);
   const wref=REF_WIND.map(k=>W.find(x=>x.m===k)).find(Boolean)||{w:0,g:0,d:0,m:"–"};
   const we=windEval(wref.w,wref.g||0,wref.d||0,p);
-  let lv=ref.lv;const why=[];
-  if(p.tipo==="barco")why.push([ref.lv,`Ola en mar abierto ${ref.h.toFixed(2)} m (${nameOf(ref.m)})`]);
-  else why.push([ref.lv,`Ola que llega a la cala ~${ref.he.toFixed(1)} m: en mar abierto hay ${ref.h.toFixed(1)} m del ${card(ref.domD??ref.d)} (${nameOf(ref.m)}) y entra el ${Math.round(Math.min(1,ref.he/Math.max(0.01,ref.h))*100)} %${K!==1?" según la orientación y tus inmersiones":" según la orientación de la cala"}`]);
+  // Media ponderada de los modelos (decide el color): a 0-2 días pesan más Météo-France (malla fina en el Mediterráneo) y ECMWF;
+  // a partir del día 3 manda ECMWF. GFS y DWD global pesan poco por su malla gruesa.
+  const WTS=dayIdx<=2?{meteofrance_wave:.35,ecmwf_wam025:.35,ewam:.15,gwam:.08,ncep_gfswave025:.07}:{ecmwf_wam025:.45,meteofrance_wave:.2,ewam:.15,gwam:.1,ncep_gfswave025:.1};
+  let sw=0,sh=0,se=0;per.forEach(x=>{const w=WTS[x.m]||0.05;sw+=w;sh+=w*x.h;se+=w*(x.he??x.h)});
+  const hsO=per.map(x=>x.h),bl={h:sh/sw,he:p.tipo==="playa"?se/sw:null,min:Math.min(...hsO),max:Math.max(...hsO)};
+  const lvBase=p.tipo==="playa"?lvOpen(bl.he):(bl.h>th.bwarn?2:bl.h>th.bgo?1:0);
+  let lv=lvBase;const why=[];
+  if(p.tipo==="barco")why.push([lvBase,`Ola en mar abierto ~${bl.h.toFixed(1)} m (media ponderada de ${per.length} modelos; ${nameOf(ref.m)} ${ref.h.toFixed(1)} m)`]);
+  else why.push([lvBase,`Ola que llega a la cala ~${bl.he.toFixed(1)} m (media ponderada de ${per.length} modelos). Con ${nameOf(ref.m)}: ${ref.h.toFixed(1)} m del ${card(ref.domD??ref.d)} en mar abierto, de los que entra el ${Math.round(Math.min(1,ref.he/Math.max(0.01,ref.h))*100)} %${K!==1?" (corregido con tus inmersiones)":""}`]);
   if(ref.t>=8&&ref.h>(p.tipo==="barco"?0.6:0.3)){lv=Math.max(lv,1);why.push([1,`Periodo largo (${ref.t.toFixed(1)} s): mar de fondo con fuerza${p.tipo==="playa"?" y posible resaca":""}`])}
   if(we.l>lv)lv=we.l;why.push(...we.why);
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
-  const agree=per.filter(x=>x.lv===ref.lv).length;
+  const agree=per.filter(x=>x.lv===lvBase).length;
   const hs=per.map(x=>p.tipo==="playa"?(x.he??x.h):x.h),spread=Math.max(...hs)-Math.min(...hs); // en playa, la dispersión que importa es la de la ola que llega a la cala
   const hz=[1,0.95,0.85,0.8,0.7,0.65,0.55][Math.min(6,Math.max(0,dayIdx))];
   const conf=Math.max(0,Math.min(1,(0.5*agree/per.length+0.5*Math.max(0,1-spread/0.6))*hz));
@@ -419,7 +425,7 @@ function evalAt(p,i,dayIdx){
   // la tormenta no cambia el color (el color es solo el mar): se marca aparte como aviso del tiempo
   const storm=!!(D.wx&&D.wx.code[i]>=95);
   if(storm)why.push([2,"Tormenta prevista: el mar permite entrar, pero con rayos y rachas el tiempo aconseja no ir"]);
-  return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length,storm,windWarn:we.warn||null};
+  return {lv,ref,per,W,wref,we,conf,agree,why,n:per.length,storm,windWarn:we.warn||null,bl};
 }
 const VIENTOS=["tramuntana","gregal","llevant","xaloc","migjorn","garbí","ponent","mestral"];
 const vientoNombre=d=>d==null?"":VIENTOS[Math.round(d/45)%8];
@@ -594,7 +600,7 @@ function tabs(){
 function controls(){
   const playa=cur.tipo==="playa";
   $("playa-ctl").style.display=playa?"":"none";$("barco-ctl").style.display=playa?"none":"block";$("lg-boca").style.display=playa?"":"none";$("lg-tierra").style.display=playa?"":"none";
-  $("gnote").textContent=playa?"Número grande: ola que llega a la cala, calculada con la ola en mar abierto (ECMWF, como Windy) y hacia dónde mira la cala. Debajo: ola en mar abierto (con su dirección) y viento.":"Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, periodo y viento.";
+  $("gnote").textContent=playa?"Número grande: ola que llega a la cala, media ponderada de 5 modelos (a 0-2 días pesan más Météo-France y ECMWF; después, ECMWF). Debajo: ola en mar abierto (un rango si los modelos no coinciden) y viento.":"Número grande: ola en mar abierto (ECMWF, como Windy). Debajo: mar de fondo principal, periodo y viento.";
   $("ptipo").textContent=playa?"Entrada desde playa: el color sale de la ola que llega a la cala (el número grande), no de la de mar abierto. Empeora si el viento entra en la cala, hay mar de fondo largo, tormenta o los modelos no coinciden.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
   $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;$("bgo").value=th.bgo;$("bwarn").value=th.bwarn;
   ["orient","aper"].forEach(k=>$(k).closest(".ctl").style.display=cur.prof?"none":"");
@@ -656,6 +662,9 @@ function wxDia(D,date){if(!D.wx)return null;const hs=[];D.times.forEach((t,i)=>{
   if(!pick){const c=rs.filter(r=>r<4).map(r=>by[r]).sort((a,b)=>b.length-a.length)[0];pick=c?c[0]:inf[0]}
   const tt=hs.map(i=>D.wx.temp[i]).filter(v=>v!=null);
   return {...pick,tmin:tt.length?Math.round(Math.min(...tt)):null,tmax:tt.length?Math.round(Math.max(...tt)):null}}
+// Ola en mar abierto: un valor si los modelos coinciden; el rango min–máx si discrepan (≥0,3 m de diferencia)
+const lvOpenOr=r=>r.bl.he!=null?lvOpen(r.bl.he):(r.bl.h>th.bwarn?2:r.bl.h>th.bgo?1:0);
+const mrango=b=>b.max-b.min>=0.3?`${b.min.toFixed(1)}–${b.max.toFixed(1)}`:b.h.toFixed(1);
 function nivelFinal(p,r,date,hr){const a=aemetFor(p,date,hr);let lv=r.lv,disc=false;if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}return {lv,disc}}
 // Ventana del día (7-20 h): el tramo seguido más largo en verde; si no hay, en ámbar; si no, mejor no bucear
 function ventanaDia(p,D,date,day){
@@ -690,7 +699,7 @@ function render(){
       if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}
       const low=r.conf<0.45,sw=r.ref.comps&&r.ref.comps.find(c=>c.k==="sw"),sub=(sw?`fondo ${sw.h.toFixed(1)} ${card(sw.d)} · `:"")+(cur.tipo==="playa"?`orilla ${r.ref.hb.toFixed(1)}`:`${(r.ref.t||0).toFixed(0)} s`);
       const wxc=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null,pl=cur.tipo==="playa";
-      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.ref.he:r.ref.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}${r.windWarn?", viento fuerte de tierra":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}${r.windWarn&&!disc?`<span class="wnf" aria-hidden="true">💨</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.ref.he:r.ref.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small><small class="mob">${r.ref.h.toFixed(1)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
+      html+=`<td><button class="cell ${LV[lv]} ${low?"lowconf":""}${wxc?" haswx":""}${r.storm?" storm":""}" data-i="${i}" data-day="${day}" aria-pressed="${sel===i}" aria-label="${DIAS[dt.getDay()]} ${dt.getDate()} ${hr}:00, ola ${(pl?r.bl.he:r.bl.h).toFixed(1)} metros${pl?" en la cala":""}, ${LVTXT[lv]}${wxc?`, ${wxc.t}`:""}${r.storm?", el tiempo aconseja no ir":""}${r.windWarn?", viento fuerte de tierra":""}">${disc?'<span class="flag">A!</span>':""}${wxc?`<span class="wx" aria-hidden="true">${wxc.i}</span>`:""}${r.windWarn&&!disc?`<span class="wnf" aria-hidden="true">💨</span>`:""}<span class="hs">${(v=>v<0.05?"<0.1":v.toFixed(1))(pl?r.bl.he:r.bl.h)}<span class="u"> m</span></span>${pl?`<small class="full">mar ${mrango(r.bl)} ${card(r.ref.domD??r.ref.d)}</small><small class="mob">${mrango(r.bl)} ${card(r.ref.domD??r.ref.d)}</small>`:sw?`<small class="full">fondo ${sw.h.toFixed(1)} ${card(sw.d)}</small>`:""}<small class="wnd"><span class="full">${pl?"viento":`${(r.ref.t||0).toFixed(0)} s`} · </span>${Math.round(r.wref.w)} ${card(r.wref.d)}</small></button></td>`});
     html+="</tr>";
   }
   $("grid").innerHTML=html+"</tbody>";
@@ -716,7 +725,7 @@ function explica(p,r,dt,hr){
     else if(e.marCara)lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}${T?` cada ${Math.round(T)} s`:""}. Entra de frente por la boca de la cala.`;
     else if(e.marLado)lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}. Llega de lado: entra en parte.`;
     else lm=`Mar: ola de ${h.toFixed(1)} m del ${card(sd)}. Viene de fuera de la boca: la cala queda a resguardo de este mar.`;
-    if(h>=0.3&&r.ref.he!=null)lm+=` Llegan unos ${r.ref.he.toFixed(1)} m a la cala.`;
+    if(h>=0.3&&r.bl&&r.bl.he!=null)lm+=` Llegan unos ${r.bl.he.toFixed(1)} m a la cala${r.bl.max-r.bl.min>=0.3?` (los modelos dan entre ${r.bl.min.toFixed(1)} y ${r.bl.max.toFixed(1)} m fuera)`:""}.`;
     const rw=e.wv===2?"expuesta al viento":e.wv===1?"algo expuesta al viento":"resguardada del viento";
     const rm=h<0.3?"con el mar en calma":e.mv===2?"expuesta al mar":e.mv===1?"algo expuesta al mar":"a resguardo del mar";
     res=`En resumen: ${rw} y ${rm}.`;
@@ -730,6 +739,7 @@ function detail(D,idx){
   $("detail").innerHTML=`<h2>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00${sel===null?" (toca una casilla)":""}</h2>
   <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}<th></th></tr></thead><tbody>
   ${r.per.map(p=>`<tr${p.m===r.ref.m?' style="font-weight:600"':""}><td>${nameOf(p.m)}${p.m===r.ref.m?" (referencia)":""}</td><td>${p.h.toFixed(2)} m · ${(p.t||0).toFixed(1)} s · ${card(p.d)}</td>${playa?`<td>${Math.round(p.f*100)} %</td><td>${p.he.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[p.lv]})"></span></td></tr>`).join("")}
+  <tr style="font-weight:700;border-top:2px solid var(--line)"><td>Media ponderada (decide el color)</td><td>${r.bl.h.toFixed(2)} m</td>${playa?`<td></td><td>${r.bl.he.toFixed(2)} m</td>`:""}<td><span class="dot" style="background:var(--${LV[lvOpenOr(r)]})"></span></td></tr>
   </tbody></table>
   ${r.ref.comps?`<h3>Componentes del oleaje (Météo-France)</h3><table class="mt"><thead><tr><th></th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}</tr></thead><tbody>${r.ref.comps.map(c=>`<tr><td>${COMP_NOM[c.k]}</td><td>${c.h.toFixed(2)} m · ${(c.t||0).toFixed(1)} s · del ${card(c.d)}</td>${playa?`<td>${Math.round(c.f*100)} %</td><td>${c.e.toFixed(2)} m</td>`:""}</tr>`).join("")}</tbody></table>`:""}
   <dl>
@@ -758,7 +768,7 @@ $("lg-save").onclick=()=>{
   const date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=$("lg-vis").value===""?null:+$("lg-vis").value;
   const D=DATA[cur.id];let pred=null;
   if(D){let best=-1,bd=1e9;D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const d=Math.abs(+t.slice(11,13)-hour);if(d<bd){bd=d;best=i}}});
-    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.ref.h,he:r.ref.he!=null?r.ref.he/K:null,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
+    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.bl.h,he:r.bl.he!=null?r.bl.he/K:null,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null}}}}
   const entry={id:newId(),cala:cur.id,date,hour,out,vis,pred};
   logs.push(entry);store.set("calas3-logs",logs);
   srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(async()=>{pending.push(entry);store.set("calas3-pending",pending);render();if(!serverOK)await pedirPin()});
