@@ -65,6 +65,21 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .log li{font-size:13px;margin:2px 0}
 details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
 #barco-ctl{display:none}
+#grid.wg{border-collapse:separate;border-spacing:0;font:500 13px/1.15 Barlow,sans-serif;width:max-content}
+#grid.wg th.lab{position:sticky;left:0;z-index:3;background:var(--paper);text-align:left;font:600 11px/1.1 Barlow,sans-serif;color:var(--muted);padding:0 8px 0 2px;min-width:64px;border-right:1px solid var(--line)}
+#grid.wg td{min-width:44px;text-align:center;padding:5px 2px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;color:#14232B;background:#fbfcfd}
+#grid.wg td small,#grid.wg th small{font-size:10px;opacity:.75;font-weight:500}
+#grid.wg .dsep{border-left:2px solid #c9d3d8}
+#grid.wg th.wday{text-align:left;padding:6px 6px 4px;font:600 12px Barlow,sans-serif;white-space:nowrap;color:var(--ink);background:var(--paper)}
+#grid.wg td.hr{font-size:14px;background:var(--paper);color:var(--ink)}
+#grid.wg td.ico{font-size:16px;background:var(--paper)}
+#grid.wg td.sel{box-shadow:inset 2px 0 0 #B0484A,inset -2px 0 0 #B0484A}
+#grid.wg tr:first-child+tr td.sel{box-shadow:inset 2px 0 0 #B0484A,inset -2px 0 0 #B0484A,inset 0 2px 0 #B0484A}
+#grid.wg tr:last-child td.sel{box-shadow:inset 2px 0 0 #B0484A,inset -2px 0 0 #B0484A,inset 0 -2px 0 #B0484A}
+#grid.wg td.lvc.l0{background:var(--go);color:#fff}#grid.wg td.lvc.l1{background:var(--warn);color:#2A1E00}#grid.wg td.lvc.l2{background:var(--stop);color:#fff}
+#grid.wg td.warnw{box-shadow:inset 0 -3px 0 #E0A526}
+#grid.wg .wa{width:11px;height:11px;vertical-align:-1px;display:inline-block}
+#grid.wg .rch{position:static;display:inline-block;width:18px;height:18px}
 .kdbar{position:relative;height:50px;margin:10px 0 0}
 .kdtrack{position:absolute;left:0;right:0;top:12px;height:10px;border-radius:5px}
 .kdmean{position:absolute;top:5px;width:3px;height:24px;background:var(--ink);transform:translateX(-1px);border-radius:1px}
@@ -230,13 +245,13 @@ th.tarde{color:var(--posidonia)}
     <p class="status" id="status">Cargando previsiones…</p>
     <div class="legend" style="margin:0 0 8px"><span><i style="background:var(--go)"></i>Factible</span><span><i style="background:var(--warn)"></i>Con precaución</span><span><i style="background:var(--stop)"></i>No recomendable</span><span><i style="background:repeating-linear-gradient(135deg,#999 0 3px,#ccc 3px 6px)"></i>Modelos en desacuerdo</span><span><b>A!</b> AEMET discrepa</span><span>⛅ Tiempo previsto</span><span><i style="background:transparent;box-shadow:inset 0 0 0 2px #7A1F14"></i>Tormenta: el mar deja entrar, el tiempo no</span><span>💨 Viento fuerte de tierra: no cambia el color, ojo en superficie</span><span id="lg-rch">Rechupe en la orilla: <i class="rch r0"></i>bajo <i class="rch r1"></i>medio <i class="rch r2"></i>fuerte</span></div>
     <p class="note" style="margin:0 0 6px" id="gnote"></p>
-    <div class="grid-wrap"><table id="grid"></table></div>
+    <div style="margin:0 0 6px"><button type="button" class="btn ghost" id="vistaBtn">Probar vista tipo Windy</button></div><div class="grid-wrap"><table id="grid"></table></div>
     <div class="detail" id="detail"></div>
   </section>
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-16e"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-16f"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -832,6 +847,34 @@ function ventanaDia(p,D,date,day){
 }
 function fmtTime(t){return t?new Date(t).toLocaleString("es-ES",{weekday:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"–"}
 
+// ---------- vista tipo Windy (prototipo): filas por variable, horas en horizontal ----------
+function vistaBtn(){const b=$("vistaBtn");if(!b)return;const w=localStorage.getItem("calas4-vista")==="windy";b.textContent=w?"Volver a la vista de casillas":"Probar vista tipo Windy";b.onclick=()=>{localStorage.setItem("calas4-vista",w?"casillas":"windy");render()}}
+const wArr=d=>d==null?"":`<svg class="wa" viewBox="0 0 10 10" style="transform:rotate(${(d+180)%360}deg)" aria-hidden="true"><path d="M5 .8 8.6 9 5 7.1 1.4 9Z" fill="currentColor"/></svg>`;
+const wMix=(a,b,t)=>a.map((v,k)=>Math.round(v+(b[k]-v)*t)),wSc=(v,st)=>{for(let k=1;k<st.length;k++)if(v<=st[k][0]){const [a,ca]=st[k-1],[b,cb]=st[k];return `rgb(${wMix(ca,cb,Math.max(0,(v-a)/(b-a))).join(",")})`}return `rgb(${st[st.length-1][1].join(",")})`};
+const SC_T=[[8,[183,212,240]],[16,[214,236,214]],[22,[251,234,170]],[28,[248,192,140]],[34,[236,142,120]]],
+  SC_W=[[0,[250,252,253]],[8,[214,238,250]],[16,[172,224,202]],[24,[250,236,150]],[32,[248,196,120]],[45,[236,122,110]]],
+  SC_H=[[0,[246,250,255]],[0.5,[204,228,247]],[1,[144,192,236]],[2,[86,134,212]]],
+  SC_P=[[4.5,[250,250,252]],[5.5,[228,220,247]],[7,[192,172,237]],[9,[152,122,221]]];
+function windyGrid(D,idx,start){
+  const pl=cur.tipo==="playa",cols=[];
+  for(let day=0;day<7;day++){const dt=new Date(start);dt.setDate(start.getDate()+day);const ii=idx.slice(day*HOURS.length,(day+1)*HOURS.length);ii.forEach((i,k)=>cols.push({i,day,k,dt,date:dt.toLocaleDateString("sv-SE"),r:evalAt(cur,i,day)}))}
+  const S=sel??idx[0],td=(c,inner,st="",cl="")=>`<td class="${c.k===0?"dsep ":""}${c.i===S?"sel ":""}${cl}" data-i="${c.i}" data-day="${c.day}"${st?` style="${st}"`:""}>${inner}</td>`;
+  let h=`<thead><tr><th class="lab"></th>`;
+  cols.forEach(c=>{if(c.k)return;const n=cols.filter(x=>x.day===c.day).length,v=ventanaDia(cur,D,c.date,c.day);
+    h+=`<th class="wday dsep" colspan="${n}"><b>${DIAS[c.dt.getDay()].toUpperCase()} ${c.dt.getDate()}</b>${v?` <span class="apto a${v.lv}">${v.txt}</span>`:""}${v&&v.st?` <span class="apto a2" title="${esc(v.st)}">⛈️</span>`:""}${v&&v.wt?` <span class="apto a1" title="${esc(v.wt)}">💨</span>`:""}</th>`});
+  h+="</tr></thead><tbody>";
+  const row=(lab,f)=>{h+=`<tr><th class="lab">${lab}</th>${cols.map(c=>c.r?f(c,c.r):td(c,"")).join("")}</tr>`};
+  row("Hora",c=>td(c,`<b>${+D.times[c.i].slice(11,13)}</b>`,"","hr"));
+  row("",c=>{const w=D.wx?wxInfo(D.wx.code[c.i],D.wx.day[c.i]):null;return td(c,w?`<span title="${w.t}">${w.i}</span>`:"","","ico")});
+  row("°C",c=>{const t=D.wx?D.wx.temp[c.i]:null;return td(c,t==null?"":Math.round(t)+"°",t==null?"":`background:${wSc(t,SC_T)}`)});
+  row("Viento<br><small>km/h</small>",(c,r)=>{const w=r.wref.w||0,g=r.wref.g||0;return td(c,`${wArr(r.wref.d)} ${Math.round(w)}<br><small>${Math.round(g)}</small>`,`background:${wSc(w,SC_W)}`,r.windWarn?"warnw":"")});
+  row("Ola fuera<br><small>m</small>",(c,r)=>td(c,`${wArr(r.ref.domD??r.ref.d)} ${r.bl.h.toFixed(1)}`,`background:${wSc(r.bl.h,SC_H)}`));
+  if(pl)row("En la cala<br><small>m</small>",(c,r)=>td(c,`<b>${r.bl.he<0.05?"<0.1":r.bl.he.toFixed(1)}</b>${r.storm?"<br><small>⛈️</small>":""}`,"",`lvc l${r.lv}`));
+  else row("Estado",(c,r)=>td(c,`<b>${r.bl.h.toFixed(1)}</b>${r.storm?"<br><small>⛈️</small>":""}`,"",`lvc l${r.lv}`));
+  row("Periodo<br><small>s</small>",(c,r)=>{const ts=r.per.map(x=>x.t).filter(t=>t>0).sort((a,b)=>a-b),T=ts.length?ts[Math.floor(ts.length/2)]:0;return td(c,T?T.toFixed(1):"",T?`background:${wSc(T,SC_P)}`:"")});
+  if(pl)row("Rechupe",(c,r)=>td(c,r.rch?`<span class="rch r${r.rch.lv}" title="Rechupe ${RECH_TXT[r.rch.lv]}">${RCH_SVG}</span>`:""));
+  row("Visib.<br><small>m</small>",c=>{const ve=visEstim(cur,D,c.i,c.day);return td(c,ve?"~"+Math.round(ve.v):"",ve?`background:${ve.v>=15?"#d4f0ec":ve.v>=8?"#edf1df":"#efe0cd"}`:"")});
+  return h+"</tbody>"}
 function render(){
   tabs();controls();
   const D=DATA[cur.id];
@@ -840,7 +883,10 @@ function render(){
   $("status").innerHTML=(D.live?`<span class="upd">Actualizado ${fmtTime(D.fetchedAt)}</span> · ${nW} modelos de oleaje y ${nV} de viento.`:`Sin conexión: previsión guardada ${fmtTime(D.savedAt)}.`)+
     (AEMET_KEY_BAD?` <b style="color:var(--stop)">⚠️ La clave de AEMET ha caducado o no es válida.</b> Pide una nueva gratis en opendata.aemet.es y cámbiala en Cloudflare → Workers → buceo-api → Settings → Variables.`:"")+(A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?(AEMET_KEY_BAD?"":" AEMET sin datos ahora."):" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir. <button class="btn ghost" id="upnow" style="padding:2px 9px;font-size:13px">Subir ahora</button>`:"");
   if($("upnow"))$("upnow").onclick=async()=>{if(serverOK){await flushPending();render()}else await pedirPin()};
-  const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");
+  const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");vistaBtn();
+  if(localStorage.getItem("calas4-vista")==="windy"){const wr=$("grid").parentNode,sl=wr.scrollLeft;$("grid").className="wg";$("grid").innerHTML=windyGrid(D,idx,start);wr.scrollLeft=sl;
+    $("grid").querySelectorAll("td[data-i]").forEach(b=>b.onclick=()=>{sel=+b.dataset.i;selDay=+b.dataset.day;render()});detail(D,idx);renderLogs();return}
+  $("grid").className="";
   let html=`<thead><tr>${HOURS.map(h=>`<th class="${h>13?"tarde":""}">${h}h</th>`).join("")}</tr></thead><tbody>`;
   for(let day=0;day<7;day++){
     const dt=new Date(start);dt.setDate(start.getDate()+day);const date=dt.toLocaleDateString("sv-SE");
