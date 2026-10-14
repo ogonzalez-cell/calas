@@ -236,7 +236,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-16c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-16d"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -816,16 +816,15 @@ async function abrir3D(){
     // la malla exterior (paso de 40 m) encaja justo en el borde de la interior y deja un hueco donde está el relieve láser: no lo tapa
     const n=B.n,SZ=B.size,step=SZ/(n-1),hs=size/2+0.01,Zo=[],inB=[];for(let r=0;r<n;r++){Zo.push([]);inB.push([]);for(let q=0;q<n;q++){const x=-SZ/2+q*step,z=-SZ/2+r*step,ib=Math.abs(x)<=hs&&Math.abs(z)<=hs;inB[r].push(ib);Zo[r].push(ib?hAt(x,z):B.z[r][q])}}
     const pos=[],oc=[],idx=[];for(let r=0;r<n;r++)for(let q=0;q<n;q++){const h=Math.max(-60,Math.min(inB[r][q]?9:2,Zo[r][q]));pos.push(-SZ/2+q*step,h*X,-SZ/2+r*step);let c;if(h>0.4)c=[0.72,0.68,0.57];else{const t=Math.min(1,-h/35);c=[0.5-0.45*t,0.8-0.58*t,0.88-0.5*t]}oc.push(...c)}
-    for(let r=0;r<n-1;r++)for(let q=0;q<n-1;q++){if(inB[r][q]&&inB[r][q+1]&&inB[r+1][q]&&inB[r+1][q+1])continue;const a=r*n+q,b=a+1,c2=a+n,d2=c2+1;idx.push(a,c2,b,b,c2,d2)}
+    for(let r=0;r<n-1;r++)for(let q=0;q<n-1;q++){if(inB[r][q]&&inB[r][q+1]&&inB[r+1][q]&&inB[r+1][q+1])continue;if(Math.max(Zo[r][q],Zo[r][q+1],Zo[r+1][q],Zo[r+1][q+1])>0.3)continue;const a=r*n+q,b=a+1,c2=a+n,d2=c2+1;idx.push(a,c2,b,b,c2,d2)} // solo fondo marino: la tierra exterior no se dibuja
     const og=new T.BufferGeometry();og.setAttribute("position",new T.Float32BufferAttribute(pos,3));og.setAttribute("color",new T.Float32BufferAttribute(oc,3));og.setIndex(idx);og.computeVertexNormals();
     sc.add(new T.Mesh(og,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
-    w.scale.set(SZ/size,SZ/size,1);
     const sg=[];for(const lvl of [-10,-20,-30,-40]){for(let r=0;r<n-1;r++)for(let q=0;q<n-1;q++){const v=[Zo[r][q],Zo[r][q+1],Zo[r+1][q+1],Zo[r+1][q]],p=[[q,r],[q+1,r],[q+1,r+1],[q,r+1]],pts=[];
       for(let k=0;k<4;k++){const a=v[k],b=v[(k+1)%4];if((a-lvl)*(b-lvl)<0){const t=(lvl-a)/(b-a),A=p[k],C=p[(k+1)%4],xx=-SZ/2+(A[0]+(C[0]-A[0])*t)*step,zz=-SZ/2+(A[1]+(C[1]-A[1])*t)*step;pts.push(new T.Vector3(xx,lvl*X+0.3,zz))}}
       if(pts.length===2&&!(Math.abs(pts[0].x)<size/2&&Math.abs(pts[0].z)<size/2))sg.push(...pts)}}
     sc.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(sg),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.55})));
     const oh=(x,z)=>Zo[Math.max(0,Math.min(n-1,Math.round((z+SZ/2)/step)))][Math.max(0,Math.min(n-1,Math.round((x+SZ/2)/step)))];
-    for(const lv of [-10,-20,-30,-40]){for(let k=size/2;k<SZ/2;k+=10){const x=ex+vx*k,z=ez+vz*k;if(Math.abs(x)>SZ/2-30||Math.abs(z)>SZ/2-30)break;if(oh(x,z)<=lv){const sp=label(`${-lv} m`,"#0b3c5d");sp.scale.set(110,20.6,1);sp.position.set(x,6,z);sc.add(sp);break}}}
+    for(const lv of [-10,-20,-30,-40]){for(let k=size/2;k<SZ/2;k+=10){const x=ex+vx*k,z=ez+vz*k;if(Math.abs(x)>SZ/2-30||Math.abs(z)>SZ/2-30)break;if(oh(x,z)<=lv){const sp=label(`${-lv} m`,"#0b3c5d");sp.scale.set(40,7.5,1);sp.position.set(x,6,z);sc.add(sp);break}}}
     draw()}catch(e){}})();
   V3={id:cur.id,T,sc,grp,ex,ez,vx,vz,X,label,draw,size,ren};upd3D(window._r3);
   }catch(e){box.innerHTML='<p class="note" style="padding:10px">El visor 3D no ha podido arrancar en este dispositivo.</p>';V3=null}
