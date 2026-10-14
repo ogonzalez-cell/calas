@@ -236,7 +236,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-15g"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-15h"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -244,7 +244,7 @@ const REF_WAVE=["ecmwf_wam025","meteofrance_wave","ncep_gfswave025","ewam","gwam
 const REF_WIND=["ecmwf_ifs025","icon_eu","meteofrance_arpege_europe","gfs_seamless","meteofrance_arome_france_hd"];
 const DEFAULT_PUNTOS=[
  {id:"blanes",name:"Blanes · Punta de Santa Anna",tipo:"playa",lat:41.6742,lon:2.8018,orient:170,aper:25,prof:"000000000000000000444000404449999999999444000000000000000000000000000000",aemet:"1702303"},
- {id:"tossa",name:"Tossa · Mar Menuda",tipo:"playa",lat:41.7215,lon:2.9405,orient:175,aper:45,prof:"000000000000000444004404009404499999999994111110000000000000000000000000",aemet:"1720207"},
+ {id:"tossa",name:"Tossa · Mar Menuda",tipo:"playa",lat:41.72172,lon:2.93958,orient:140,aper:60,prof:"000000000000000000099999999999494444999990000000000000000000000000000000",aemet:"1720207"},
  {id:"sfg",name:"Sant Feliu · Port Salvi",tipo:"playa",lat:41.7714,lon:3.0304,orient:140,aper:50,prof:"000000000040000044999999999999999999994444444444400444000000000000000000",aemet:"1716002"},
  {id:"boreas",name:"Palamós · Boreas",tipo:"barco",lat:41.8271,lon:3.1284,orient:120,aper:45,aemet:"1711804"},
  {id:"vedell",name:"Palamós · Morro del Vedell",tipo:"playa",lat:41.8474,lon:3.1377,orient:150,aper:30,prof:"000000000000000444444444999999999999000000000000000000000000000000000000",aemet:"1711804"},
@@ -270,7 +270,7 @@ if(!PUNTOS){PUNTOS=JSON.parse(JSON.stringify(DEFAULT_PUNTOS));const old=store.ge
 const th=Object.assign({go:0.7,warn:1.0,bgo:0.8,bwarn:1.2},store.get("calas4-th",{}));if(!th.v6){if(th.go<0.7)th.go=0.7;if(th.warn<1.0)th.warn=1.0;th.v6=1}
 if(!th.v7){th.go=0.7;th.warn=1.0;th.v7=1} // v7: los límites se aplican a la ola en mar abierto (número grande)
 function addNewDefaults(seenArr){const seen=new Set(seenArr||PUNTOS.map(p=>p.id));let ch=false;DEFAULT_PUNTOS.forEach(d=>{if(!seen.has(d.id)){seen.add(d.id);if(!PUNTOS.some(p=>p.id===d.id)){PUNTOS.push(JSON.parse(JSON.stringify(d)));ch=true}}});th.seenDef=[...seen];return ch}
-const FIXES_REV=3,FIXES={blanes:{orient:170,aper:25,prof:"000000000000000000444000404449999999999444000000000000000000000000000000",lat:41.6742,lon:2.8018},tossa:{orient:175,aper:45,prof:"000000000000000444004404009404499999999994111110000000000000000000000000"},sfg:{orient:140,aper:50,prof:"000000000040000044999999999999999999994444444444400444000000000000000000",lat:41.7714,lon:3.0304},vedell:{orient:150,aper:30,prof:"000000000000000444444444999999999999000000000000000000000000000000000000"},begur:{orient:50,aper:10,prof:"000444444999040044444444000000000000000000000000000000000000000000000000"}}; // boca de cada cala calculada sobre la línea de costa de OpenStreetMap (perfilDesdeCosta)
+const FIXES_REV=4,FIXES={blanes:{orient:170,aper:25,prof:"000000000000000000444000404449999999999444000000000000000000000000000000",lat:41.6742,lon:2.8018},tossa:{orient:140,aper:60,prof:"000000000000000000099999999999494444999990000000000000000000000000000000",lat:41.72172,lon:2.93958},sfg:{orient:140,aper:50,prof:"000000000040000044999999999999999999994444444444400444000000000000000000",lat:41.7714,lon:3.0304},vedell:{orient:150,aper:30,prof:"000000000000000444444444999999999999000000000000000000000000000000000000"},begur:{orient:50,aper:10,prof:"000444444999040044444444000000000000000000000000000000000000000000000000"}}; // boca de cada cala calculada sobre la línea de costa de OpenStreetMap (perfilDesdeCosta)
 function applyFixes(rev){if((rev||0)>=FIXES_REV)return false;PUNTOS.forEach(p=>{if(FIXES[p.id])Object.assign(p,FIXES[p.id])});th.fixRev=FIXES_REV;return true}
 {const c1=addNewDefaults(th.seenDef),c2=applyFixes(th.fixRev);if(c1||c2)store.set("calas4-puntos",PUNTOS);store.set("calas4-th",th)}
 const DEFAULT_API="https://buceo-api.tk97b4vjdk.workers.dev"; // tu servidor de Cloudflare: solo falta el PIN
@@ -404,18 +404,26 @@ function windEval(w,g,d,p){
 // Umbrales calibrados con Mar Menuda, 10/10/2026 (0,3 m del NE con mar de fondo de ~6 s: rechupe al entrar y salida difícil).
 // Pendientes MEDIDAS en la zona de batida (de +1 a -1 m) sobre el modelo topobatimétrico del ICGC (LiDAR y sonda, 2022-2024), 5 perfiles por cala.
 // Blanes: medida en la playita de entrada junto al espigón del puerto (no en la punta de roca).
-const PENDIENTE={tossa:0.145,sfg:0.17,blanes:0.17,begur:0.14,vedell:0.05};
+const PENDIENTE={tossa:0.33,sfg:0.17,blanes:0.17,begur:0.14,vedell:0.05};
 // Acceso a la cala: con rocas o mal acceso, el mismo rechupe es mucho más peligroso (Port Salvi)
 const ACCESO_DEF={sfg:"dificil"},ACCESO_K={facil:0.8,normal:1,dificil:2.5};
 const acceso=p=>p.acceso||ACCESO_DEF[p.id]||"normal";
 const RECH_TXT=["bajo","medio","fuerte"];
 // flecha dibujada (no un carácter): en iPhone el símbolo ↩ se pinta como emoji gris y tapa el color
 const RCH_SVG='<svg viewBox="0 0 10 10" width="100%" height="100%" aria-hidden="true"><path d="M7.6 3.3H3.8a2 2 0 0 0 0 4h2.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.2 1.7 3.5 3.3 5.2 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const rechTxt=c=>`Orilla con pendiente del ${Math.round(c.tb*100)} % (medida). ${c.ac==="dificil"?"Acceso difícil: el rechupe cuenta 2,5 veces. ":""}olas cada ${Math.round(c.T)} s en una playa de pendiente ${c.tb>=0.13?"fuerte":c.tb>=0.1?"media-alta":"media"}: el agua sube ~${c.r2.toFixed(2)} m por la playa${c.ac==="dificil"?` (con el acceso difícil, el riesgo equivale a ~${c.rv.toFixed(2)} m)`:""}${c.lv===0?" y vuelve sin fuerza.":c.lv===1?" y vuelve con fuerza: entrada y salida algo más difíciles; sal con la ola, aleteando.":"; vuelve con mucha fuerza: cuesta salir. Espera a que pase la serie y sal con la ola, aleteando fuerte."}`;
+const rechTxt=c=>c.pool?`Entrada por la poza de la Banyera: el rechupe lo marca el mar de fondo largo (5 s o más) que llega a la boca, venga de donde venga. Ahora ${c.E>0?`${c.E.toFixed(2)} m de mar de fondo de ${Math.round(c.T)} s`:"no hay mar de fondo largo"}${c.lv===0?": el agua apenas se mueve en la poza.":c.lv===1?": algo de rechupe al entrar y salir; sal con la ola, aleteando.":": rechupe fuerte en la boca de la poza; espera a que pase la serie."}`:`Orilla con pendiente del ${Math.round(c.tb*100)} % (medida). ${c.ac==="dificil"?"Acceso difícil: el rechupe cuenta 2,5 veces. ":""}olas cada ${Math.round(c.T)} s en una playa de pendiente ${c.tb>=0.13?"fuerte":c.tb>=0.1?"media-alta":"media"}: el agua sube ~${c.r2.toFixed(2)} m por la playa${c.ac==="dificil"?` (con el acceso difícil, el riesgo equivale a ~${c.rv.toFixed(2)} m)`:""}${c.lv===0?" y vuelve sin fuerza.":c.lv===1?" y vuelve con fuerza: entrada y salida algo más difíciles; sal con la ola, aleteando.":"; vuelve con mucha fuerza: cuesta salir. Espera a que pase la serie y sal con la ola, aleteando fuerte."}`;
 const rechLv=r2=>r2>=0.6?2:r2>=0.15?1:0; // recalibrado con las pendientes medidas: Mar Menuda 3/10 y 10/10, Port Salvi 10/10
 function rechupeK(pid){const L=logs.filter(x=>x.cala===pid&&x.rech!=null&&x.pred&&x.pred.r2!=null);if(L.length<2)return {k:1,n:L.length};
   let best={k:1,e:1e9};for(let k=0.5;k<=3.001;k+=0.1){let e=0;L.forEach(x=>{e+=Math.abs(rechLv(x.pred.r2*k)-x.rech)});if(e<best.e-1e-9)best={k,e}}return {k:best.k,n:L.length}}
-function rechupe(p,r){if(p.tipo!=="playa"||!r.bl||r.bl.he==null)return null;
+// Entradas por poza entre rocas (Mar Menuda: sa Banyera de ses Dones). La poza se llena y se vacía por la boca con el mar de fondo
+// largo, venga de donde venga; el mar de viento corto apenas la mueve. Calibrado con tus días: 10/10 (mar de fondo de 5,5-6 s:
+// rechupe medio a las 8 y a las 9) y 14/10 (mar de 4-5 s: sin rechupe). Umbrales: medio desde 0,12 m de mar de fondo largo; fuerte desde 0,5 m.
+const POZA={tossa:true};
+function rechupePoza(p,r){const M=(r.per||[]).filter(x=>x.h!=null);if(!M.length)return null;
+  // media de todos los modelos, contando cada uno solo por la parte de mar de fondo largo: 0 con 4,8 s o menos, entero desde 5,8 s
+  const w=t=>Math.max(0,Math.min(1,((t||0)-4.8)/1)),E=M.reduce((a,x)=>a+x.h*w(x.t),0)/M.length,T=Math.max(...M.map(x=>x.t||0));
+  const lv=E>=0.5?2:E>=0.12?1:0;return {pool:true,r2:E,rv:E,E,lv,T,tb:PENDIENTE[p.id]||0.33,ac:acceso(p)}}
+function rechupe(p,r){if(p.tipo!=="playa"||!r.bl||r.bl.he==null)return null;if(POZA[p.id])return rechupePoza(p,r);
   const tb=p.pend||PENDIENTE[p.id]||0.1,H=Math.max(0.03,r.bl.he);
   const cs=(r.ref.comps||[]).filter(c=>c.e>=0.01&&c.t);const T=cs.length?Math.max(...cs.map(c=>c.t)):(r.ref.t||4); // el periodo más largo que entra en la cala
   const L0=1.56*T*T,s=Math.sqrt(H*L0),r2=1.1*(0.35*tb*s+0.5*Math.sqrt(H*L0*(0.563*tb*tb+0.004)));
@@ -464,8 +472,8 @@ function evalAt(p,i,dayIdx){
   else why.push([lvBase,`Ola que llega a la cala ~${bl.he.toFixed(1)} m (media ponderada de ${per.length} modelos). Con ${nameOf(ref.m)}: ${ref.h.toFixed(1)} m del ${card(ref.domD??ref.d)} en mar abierto, de los que entra el ${Math.round(Math.min(1,ref.he/Math.max(0.01,ref.h))*100)} %${K!==1?" (corregido con tus inmersiones)":""}`]);
   if(ref.t>=8&&ref.h>(p.tipo==="barco"?0.6:0.3)){lv=Math.max(lv,1);why.push([1,`Periodo largo (${ref.t.toFixed(1)} s): mar de fondo con fuerza${p.tipo==="playa"?" y posible resaca":""}`])}
   if(we.l>lv)lv=we.l;why.push(...we.why);
-  const rch=rechupe(p,{bl,ref});
-  if(rch&&rch.lv>0){lv=Math.max(lv,rch.lv===2&&(rch.rv>=0.8||rch.ac==="dificil")?2:1);why.push([rch.lv,`Rechupe ${rch.lv===2?"fuerte":"medio"} en la orilla${rch.ac==="dificil"?" (acceso difícil: penaliza 2,5 veces)":""}: olas cada ${Math.round(rch.T)} s en playa empinada; el agua sube ~${rch.r2.toFixed(2)} m por la playa y vuelve con fuerza (entrada y salida más difíciles)`])}
+  const rch=rechupe(p,{bl,ref,per});
+  if(rch&&rch.lv>0){lv=Math.max(lv,rch.lv===2&&(rch.pool||rch.rv>=0.8||rch.ac==="dificil")?2:1);why.push(rch.pool?[rch.lv,`Rechupe ${rch.lv===2?"fuerte":"medio"} en la Banyera: ${rch.E.toFixed(2)} m de mar de fondo de ${Math.round(rch.T)} s llegando a la boca de la poza`]:[rch.lv,`Rechupe ${rch.lv===2?"fuerte":"medio"} en la orilla${rch.ac==="dificil"?" (acceso difícil: penaliza 2,5 veces)":""}: olas cada ${Math.round(rch.T)} s en playa empinada; el agua sube ~${rch.r2.toFixed(2)} m por la playa y vuelve con fuerza (entrada y salida más difíciles)`])}
   // confianza: cuántos modelos coinciden con la referencia, dispersión de ola y horizonte
   const agree=per.filter(x=>x.lv===lvBase).length;
   const hs=per.map(x=>p.tipo==="playa"?(x.he??x.h):x.h),spread=Math.max(...hs)-Math.min(...hs); // en playa, la dispersión que importa es la de la ola que llega a la cala
