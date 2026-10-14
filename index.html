@@ -216,7 +216,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-13g"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-14a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -778,7 +778,7 @@ function detail(D,idx){
    ${(()=>{const e=exposicion(cur,r.wref.d,r.wref.w,r.ref.domD??r.ref.d,r.ref.h);return `<dt>Exposición a esta hora</dt><dd><span class="expo e${e.lv}">${e.txt}</span> ${esc(e.detalle)}</dd>`})()}
    ${r.rch?`<dt>Rechupe en la orilla</dt><dd><span class="expo e${r.rch.lv}">${RECH_TXT[r.rch.lv][0].toUpperCase()+RECH_TXT[r.rch.lv].slice(1)}</span> ${rechTxt(r.rch)}</dd>`:""}
    ${r.W.length>1?`<dt>Viento por modelo</dt><dd>${r.W.map(x=>`${nameOf(x.m)} ${Math.round(x.w)}`).join(" · ")}</dd>`:""}
-   <dt>AEMET (${A_name()})</dt><dd>${a?`oleaje ${esc(a.txt||"–")}${a.tAgua!=null?` · agua ${a.tAgua} °C`:""}`:"sin dato"}</dd>
+   <dt>AEMET (${A_name()})</dt><dd>${a?`oleaje ${esc(a.txt||"–")}${a.tAgua!=null?` · agua ${a.tAgua} °C`:""}`:aemetData[cur.id]&&!aemetData[cur.id].dias[date]?"AEMET solo publica la previsión de playas a 3 días: para este día aún no hay":"sin dato"}</dd>
    ${(()=>{const w=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;return w?`<dt>Tiempo</dt><dd>${w.i} ${w.t}${D.wx.temp[i]!=null?` · ${Math.round(D.wx.temp[i])} °C`:""}</dd>`:""})()}
    <dt>Temperatura del agua</dt><dd>${D.sst[i]!=null?D.sst[i].toFixed(1)+" °C":"–"}</dd>
    <dt>Lluvia 48 h previas</dt><dd>${Math.round(r48)} mm</dd>
