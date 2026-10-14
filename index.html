@@ -216,7 +216,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-14a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-14b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -302,6 +302,8 @@ async function loadOpenMeteo(p){
   let wx=null;if(x&&x.hourly&&x.hourly.weather_code){const ix={};x.hourly.time.forEach((t,k)=>ix[t]=k);const g=a=>times.map(t=>ix[t]!=null&&a?a[ix[t]]:null);wx={code:g(x.hourly.weather_code),temp:g(x.hourly.temperature_2m),day:g(x.hourly.is_day)}}
   return {times,wave,wind,sst,precip,comp,wx,today:times[72].slice(0,10),live:true};
 }
+// true si AEMET rechaza la clave (caducada o no válida): se avisa en la app para renovarla
+let AEMET_KEY_BAD=false;
 async function aemetPlaya(code){
   const hk=new Date().toISOString().slice(0,13); // evita respuestas antiguas guardadas por el navegador
   const r=await fetch(`${API()}/aemet/playa/${code}?h=${hk}`,{cache:"no-store"});const j=await r.json().catch(()=>({}));
@@ -311,7 +313,7 @@ const oleajeLvl=t=>!t?null:/fuerte|grueso/i.test(t)?2:/moderad/i.test(t)?1:/d[e�
 async function loadAemet(p){
   if(!API()||!p.aemet) return null;
   // AEMET falla a menudo ("Error al obtener los datos"): si falla, se usa la última respuesta buena guardada (hasta 36 h)
-  let j;try{j=await aemetPlaya(p.aemet)}catch(e){const c=store.get("calas4-aemet-"+p.id,null);if(c&&Date.now()-c.t<36*3600e3)return {...c.out,stale:true,t:c.t};throw e}
+  let j;try{j=await aemetPlaya(p.aemet);AEMET_KEY_BAD=false}catch(e){if(/jwt|api ?key|apikey|401|403|no autoriz|unauthori|invalid|expir|caduc/i.test(e.message||""))AEMET_KEY_BAD=true;const c=store.get("calas4-aemet-"+p.id,null);if(c&&Date.now()-c.t<36*3600e3)return {...c.out,stale:true,t:c.t};throw e}
   const x=Array.isArray(j)?j[0]:j,out={nombre:x.nombre,dias:{}};
   (x.prediccion?.dia||[]).forEach(d=>{const f=String(d.fecha),key=`${f.slice(0,4)}-${f.slice(4,6)}-${f.slice(6,8)}`;
     out.dias[key]={am:oleajeLvl(d.oleaje?.descripcion1),pm:oleajeLvl(d.oleaje?.descripcion2),amTxt:d.oleaje?.descripcion1,pmTxt:d.oleaje?.descripcion2,tAgua:d.tAgua?.valor1,viento:[d.viento?.descripcion1,d.viento?.descripcion2]}});
@@ -716,7 +718,7 @@ function render(){
   if(!D){$("status").textContent=loading?"Cargando previsiones…":"Sin conexión y sin previsión guardada todavía para este punto: ábrela una vez con cobertura.";$("grid").innerHTML="";$("detail").innerHTML="";compass(null);return}
   const A=aemetData[cur.id],nW=Object.keys(D.wave).length,nV=Object.keys(D.wind).length;
   $("status").innerHTML=(D.live?`<span class="upd">Actualizado ${fmtTime(D.fetchedAt)}</span> · ${nW} modelos de oleaje y ${nV} de viento.`:`Sin conexión: previsión guardada ${fmtTime(D.savedAt)}.`)+
-    (A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?" AEMET sin datos ahora.":" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir. <button class="btn ghost" id="upnow" style="padding:2px 9px;font-size:13px">Subir ahora</button>`:"");
+    (AEMET_KEY_BAD?` <b style="color:var(--stop)">⚠️ La clave de AEMET ha caducado o no es válida.</b> Pide una nueva gratis en opendata.aemet.es y cámbiala en Cloudflare → Workers → buceo-api → Settings → Variables.`:"")+(A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?(AEMET_KEY_BAD?"":" AEMET sin datos ahora."):" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir. <button class="btn ghost" id="upnow" style="padding:2px 9px;font-size:13px">Subir ahora</button>`:"");
   if($("upnow"))$("upnow").onclick=async()=>{if(serverOK){await flushPending();render()}else await pedirPin()};
   const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");
   let html=`<thead><tr>${HOURS.map(h=>`<th class="${h>13?"tarde":""}">${h}h</th>`).join("")}</tr></thead><tbody>`;
@@ -788,7 +790,7 @@ function detail(D,idx){
   <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}</ul>
   <p class="note">Estimación orientativa: no sustituye a mirar el mar en el propio punto ni al criterio del guía o del patrón. Versión ${APP_VERSION}.</p>`;
 }
-const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre)+(aemetData[cur.id].stale?" · última previsión guardada":""):cur.aemet?"AEMET no responde ahora":"sin playa asignada";
+const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre)+(aemetData[cur.id].stale?" · última previsión guardada":""):cur.aemet?(AEMET_KEY_BAD?"clave de AEMET caducada":"AEMET no responde ahora"):"sin playa asignada";
 
 // ---------- registro ----------
 function renderLogs(){
