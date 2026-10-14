@@ -174,9 +174,10 @@ th.tarde{color:var(--posidonia)}
     <h2 id="h-3d">La cala en 3D</h2>
     <p class="note" id="v3dwhen" style="margin:0 0 6px"></p>
     <div id="v3dbox" style="height:330px;border-radius:10px;overflow:hidden;background:linear-gradient(#cfe6f3,#eef4f2)"></div>
+    <div class="cexp" id="cexp3d" aria-live="polite"></div>
     <p class="note">Relieve real medido por el ICGC (LiDAR y sonda, 2022-2024), con la altura exagerada ×1,6. Líneas blancas: profundidad (2, 5 y 10 m). Las olas y el rechupe son los de la hora que tengas seleccionada. Con un dedo giras; con dos, pellizcas para acercar y arrastras para desplazarte. En el ordenador: rueda para acercar y Mayúsculas + arrastrar (o botón derecho) para desplazarte. «Centrar» vuelve a la vista inicial.</p>
   </section>
-  <section class="panel o1" aria-labelledby="h-cala">
+  <section class="panel o1" id="pPunto" aria-labelledby="h-cala">
     <h2 id="h-cala">Punto</h2>
     <p class="note" id="ptipo"></p>
     <svg class="compass" id="compass" viewBox="-110 -110 220 220" role="img" aria-label="Dibujo de la cala: zona azul, mar abierto; zona marrón, tierra; línea ondulada, de dónde vienen las olas; flecha gris, de dónde viene el viento"></svg>
@@ -253,7 +254,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-16l"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-16m"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -686,7 +687,7 @@ function controls(){
   $("ptipo").textContent=playa?"Entrada desde playa: el color sale de la ola que llega a la cala (el número grande), no de la de mar abierto. Empeora si el viento entra en la cala, hay mar de fondo largo, tormenta o los modelos no coinciden.":"Salida en barco: el semáforo usa la ola en mar abierto y el viento.";
   $("orient").value=cur.orient;$("aper").value=cur.aper;$("tgo").value=th.go;$("twarn").value=th.warn;$("bgo").value=th.bgo;$("bwarn").value=th.bwarn;
   ["orient","aper"].forEach(k=>$(k).closest(".ctl").style.display=cur.prof?"none":"");
-  $("p3d").style.display=CALA3D[cur.id]&&playa?"":"none";if(CALA3D[cur.id]&&playa&&(!V3||V3.id!==cur.id))abrir3D();
+  $("p3d").style.display=CALA3D[cur.id]&&playa?"":"none";$("pPunto").style.display=CALA3D[cur.id]&&playa?"none":"";/* el 3D sustituye al panel «Punto»; las calas sin 3D lo mantienen */if(CALA3D[cur.id]&&playa&&(!V3||V3.id!==cur.id))abrir3D();
   $("profnote").textContent=cur.prof?`Boca calculada sobre la línea de costa real (OpenStreetMap): mira al ${card(cur.orient)}. Lo que entra de cada dirección sale de esa geometría y de cómo se abre el oleaje al pasar entre las puntas.`:"Boca ajustada a mano. Al guardar el punto en «Editar puntos» se calcula sola sobre la costa real.";
   $("v-orient").textContent=`${cur.orient}° (${card(cur.orient)})`;$("v-aper").textContent=`±${cur.aper}°`;
   $("v-tgo").textContent=`${(+th.go).toFixed(2)} m`;$("v-twarn").textContent=`${(+th.warn).toFixed(2)} m`;$("v-bgo").textContent=`${(+th.bgo).toFixed(2)} m`;$("v-bwarn").textContent=`${(+th.bwarn).toFixed(2)} m`;
@@ -938,7 +939,7 @@ function explica(p,r,dt,hr){
 function detail(D,idx){
   const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";$("cexp").innerHTML="";return}
   const date=D.times[i].slice(0,10),hr=+D.times[i].slice(11,13),dt=new Date(date+"T12:00:00"),a=aemetFor(cur,date,hr),r48=rain48(D,date),playa=cur.tipo==="playa";
-  $("cexp").innerHTML=explica(cur,r,dt,hr);
+  $("cexp").innerHTML=explica(cur,r,dt,hr);$("cexp3d").innerHTML=$("cexp").innerHTML;/* con 3D, la explicación va bajo el dibujo */
   window._r3=r;window._r3w=`${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00`;if(V3&&V3.id===cur.id)upd3D(r);
   $("detail").innerHTML=`<h2>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00${sel===null?" (toca una casilla)":""}</h2>
   <table class="mt"><thead><tr><th>Modelo de oleaje</th><th>Mar abierto</th>${playa?"<th>Entra</th><th>En la cala</th>":""}<th></th></tr></thead><tbody>
