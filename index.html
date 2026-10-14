@@ -236,7 +236,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-16b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-16c"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -752,13 +752,13 @@ function grid3d(d){const N=d.N,qd=d.q||4,g=d.z.split(";").map(r=>{const v=[];r.s
   for(let it=0;it<80;it++){let left=0;for(let r=0;r<N;r++)for(let q=0;q<N;q++){if(g[r][q]!=null)continue;let s=0,n=0;for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const v=g[r+a]&&g[r+a][q+b];if(v!=null){s+=v;n++}}if(n)g[r][q]=s/n;else left++}if(!left)break}
   return g.map(r=>r.map(v=>v==null?0:v))}
 // batimetría exterior (EMODnet, rest.emodnet-bathymetry.eu): 25 perfiles de 1,6 km; se guarda en el móvil para no repetir la descarga
-async function batExterior(d){const key="calas4-bat-"+cur.id;try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c&&c.v===1&&c.c===d.c.join())return c}catch(e){}
-  const n=25,SZ=1600,half=SZ/2,ky=110574,kx=111320*Math.cos(d.c[0]*Math.PI/180),step=SZ/(n-1);
+async function batExterior(d){const key="calas4-bat-"+cur.id;try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c&&c.v===2&&c.c===d.c.join())return c}catch(e){}
+  const n=41,SZ=1600,half=SZ/2,ky=110574,kx=111320*Math.cos(d.c[0]*Math.PI/180),step=SZ/(n-1);
   const fila=async r=>{const la=d.c[0]+(half-r*step)/ky,lw=d.c[1]-half/kx,le=d.c[1]+half/kx;
     for(let k=0;k<4;k++){try{const a=await (await fetch(`https://rest.emodnet-bathymetry.eu/depth_profile?geom=LINESTRING(${lw.toFixed(5)}%20${la.toFixed(5)},${le.toFixed(5)}%20${la.toFixed(5)})`)).json();
       return [...Array(n).keys()].map(q=>{const v=a[Math.round(q*(a.length-1)/(n-1))];return v==null||isNaN(v)?3:+v})}catch(e){await new Promise(z=>setTimeout(z,600*(k+1)))}}return null};
   const rows=[];for(let r=0;r<n;r+=4){rows.push(...await Promise.all([...Array(Math.min(4,n-r)).keys()].map(k=>fila(r+k))))} // de 4 en 4: el servidor corta si se piden todas a la vez
-  if(rows.some(x=>!x))return null;const B={v:1,c:d.c.join(),n,size:SZ,z:rows};try{localStorage.setItem(key,JSON.stringify(B))}catch(e){}return B}
+  if(rows.some(x=>!x))return null;const B={v:2,c:d.c.join(),n,size:SZ,z:rows};try{localStorage.setItem(key,JSON.stringify(B))}catch(e){}return B}
 async function abrir3D(){
   if(V3&&V3.ren){try{V3.ren.dispose();V3.ren.forceContextLoss()}catch(e){}} // libera el visor anterior al cambiar de cala
   const d=CALA3D[cur.id],box=$("v3dbox");if(!d){box.innerHTML='<p class="note" style="padding:10px">Aún no hay modelo 3D de esta cala.</p>';V3=null;return}
@@ -811,12 +811,14 @@ async function abrir3D(){
   bt.onclick=()=>{th=th0;ph=ph0;R=R0;tg.set(...tg0);draw()};
   const up=e=>{ptr.delete(e.pointerId);pd=0};el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
   el.addEventListener("wheel",e=>{e.preventDefault();R=Math.max(40,Math.min(2600,R*(1+e.deltaY*0.001)));draw()},{passive:false});
-  // zona exterior: batimetría EMODnet (cartas del Instituto Hidrográfico de la Marina), 1,6 km alrededor, malla de ~65 m
+  // zona exterior: batimetría EMODnet (cartas del Instituto Hidrográfico de la Marina), 1,6 km alrededor, malla de 40 m
   (async()=>{try{const B=await batExterior(d);if(!B||!V3||V3.sc!==sc)return;
-    const n=B.n,SZ=B.size,step=SZ/(n-1),Zo=[];for(let r=0;r<n;r++){Zo.push([]);for(let q=0;q<n;q++){const x=-SZ/2+q*step,z=-SZ/2+r*step;Zo[r].push(Math.abs(x)<size/2&&Math.abs(z)<size/2?hAt(x,z):B.z[r][q])}}
-    const og=new T.PlaneGeometry(SZ,SZ,n-1,n-1);og.rotateX(-Math.PI/2);const op=og.attributes.position,oc=[];
-    for(let i=0;i<op.count;i++){const r=Math.floor(i/n),q=i%n,z=Math.max(-60,Math.min(9,Zo[r][q]));op.setY(i,z*X-0.5);let c;if(z>0.4)c=[0.62,0.6,0.5];else{const t=Math.min(1,-z/35);c=[0.5-0.45*t,0.8-0.58*t,0.88-0.5*t]}oc.push(...c)}
-    og.setAttribute("color",new T.Float32BufferAttribute(oc,3));og.computeVertexNormals();sc.add(new T.Mesh(og,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
+    // la malla exterior (paso de 40 m) encaja justo en el borde de la interior y deja un hueco donde está el relieve láser: no lo tapa
+    const n=B.n,SZ=B.size,step=SZ/(n-1),hs=size/2+0.01,Zo=[],inB=[];for(let r=0;r<n;r++){Zo.push([]);inB.push([]);for(let q=0;q<n;q++){const x=-SZ/2+q*step,z=-SZ/2+r*step,ib=Math.abs(x)<=hs&&Math.abs(z)<=hs;inB[r].push(ib);Zo[r].push(ib?hAt(x,z):B.z[r][q])}}
+    const pos=[],oc=[],idx=[];for(let r=0;r<n;r++)for(let q=0;q<n;q++){const h=Math.max(-60,Math.min(inB[r][q]?9:2,Zo[r][q]));pos.push(-SZ/2+q*step,h*X,-SZ/2+r*step);let c;if(h>0.4)c=[0.72,0.68,0.57];else{const t=Math.min(1,-h/35);c=[0.5-0.45*t,0.8-0.58*t,0.88-0.5*t]}oc.push(...c)}
+    for(let r=0;r<n-1;r++)for(let q=0;q<n-1;q++){if(inB[r][q]&&inB[r][q+1]&&inB[r+1][q]&&inB[r+1][q+1])continue;const a=r*n+q,b=a+1,c2=a+n,d2=c2+1;idx.push(a,c2,b,b,c2,d2)}
+    const og=new T.BufferGeometry();og.setAttribute("position",new T.Float32BufferAttribute(pos,3));og.setAttribute("color",new T.Float32BufferAttribute(oc,3));og.setIndex(idx);og.computeVertexNormals();
+    sc.add(new T.Mesh(og,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
     w.scale.set(SZ/size,SZ/size,1);
     const sg=[];for(const lvl of [-10,-20,-30,-40]){for(let r=0;r<n-1;r++)for(let q=0;q<n-1;q++){const v=[Zo[r][q],Zo[r][q+1],Zo[r+1][q+1],Zo[r+1][q]],p=[[q,r],[q+1,r],[q+1,r+1],[q,r+1]],pts=[];
       for(let k=0;k<4;k++){const a=v[k],b=v[(k+1)%4];if((a-lvl)*(b-lvl)<0){const t=(lvl-a)/(b-a),A=p[k],C=p[(k+1)%4],xx=-SZ/2+(A[0]+(C[0]-A[0])*t)*step,zz=-SZ/2+(A[1]+(C[1]-A[1])*t)*step;pts.push(new T.Vector3(xx,lvl*X+0.3,zz))}}
