@@ -236,7 +236,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-15h"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-15i"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -427,8 +427,11 @@ function rechupe(p,r){if(p.tipo!=="playa"||!r.bl||r.bl.he==null)return null;if(P
   const tb=p.pend||PENDIENTE[p.id]||0.1,H=Math.max(0.03,r.bl.he);
   const cs=(r.ref.comps||[]).filter(c=>c.e>=0.01&&c.t);const T=cs.length?Math.max(...cs.map(c=>c.t)):(r.ref.t||4); // el periodo más largo que entra en la cala
   const L0=1.56*T*T,s=Math.sqrt(H*L0),r2=1.1*(0.35*tb*s+0.5*Math.sqrt(H*L0*(0.563*tb*tb+0.004)));
-  const ac=acceso(p),rv=r2*rechupeK(p.id).k*ACCESO_K[ac];
-  return {r2,rv,lv:T<4.5?0:rechLv(rv),T,tb,ac}} // con mar de viento corto (<4,5 s) el agua apenas vuelve con fuerza
+  // el rechupe solo aparece con olas largas: periodo mediano de los 5 modelos, sin efecto hasta 4,7 s y entero desde 5,1 s
+  // (rampa suave: evita que un cambio de 4,4 a 4,8 s en la previsión salte de bajo a fuerte de golpe)
+  const ts=(r.per||[]).map(x=>x.t).filter(t=>t>0).sort((a,b)=>a-b),Tm=ts.length?ts[Math.floor(ts.length/2)]:T,wT=Math.max(0,Math.min(1,(Tm-4.7)/0.4));
+  const ac=acceso(p),rv=r2*rechupeK(p.id).k*ACCESO_K[ac]*wT;
+  return {r2:r2*wT,rv,lv:rechLv(rv),T:Tm,tb,ac}}
 function learnedK(pid){
   const p=PUNTOS.find(x=>x.id===pid);if(!p||p.tipo!=="playa")return {k:1,n:0};
   const L=logs.filter(x=>x.cala===pid&&x.pred&&x.pred.h!=null);
