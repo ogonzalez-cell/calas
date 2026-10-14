@@ -65,6 +65,15 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .log li{font-size:13px;margin:2px 0}
 details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
 #barco-ctl{display:none}
+.kdbar{position:relative;height:64px;margin:8px 0 0}
+.kdtrack{position:absolute;left:0;right:0;top:30px;height:6px;border-radius:3px;background:linear-gradient(90deg,#2E9E6A,#E0A526,#C9412F);opacity:.4}
+.kdmean{position:absolute;top:22px;width:3px;height:22px;background:var(--ink);transform:translateX(-1px);border-radius:1px}
+.kdmean span{position:absolute;top:24px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.kdpt{position:absolute;top:27px;width:12px;height:12px;border-radius:50%;transform:translateX(-6px);border:2px solid var(--paper);box-sizing:border-box}
+.kdpt.good{background:#1F8A55}.kdpt.bad{background:#C9412F}
+.kdlab{position:absolute;transform:translateX(-50%);font-size:10.5px;font-weight:600;white-space:nowrap}
+.kdlab.good{color:#1F8A55}.kdlab.bad{color:#C9412F}
+.kdleg{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted)}
 .cexp{font-size:13.5px;line-height:1.5;background:var(--foam);border-radius:8px;padding:8px 10px;margin-top:8px}.cexp:empty{display:none}.cexp .cres{font-weight:600}
 .lbl{display:flex;align-items:center;gap:6px;font-weight:500;font-size:14px}.lbl .val{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
 .info{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1px solid var(--muted);background:transparent;color:var(--muted);font:700 12px/18px Georgia,serif;font-style:italic;padding:0;cursor:pointer}
@@ -216,7 +225,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-14e"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-14f"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -700,6 +709,9 @@ function wxDia(D,date){if(!D.wx)return null;const hs=[];D.times.forEach((t,i)=>{
 // Ola en mar abierto: un valor si los modelos coinciden; el rango min–máx si discrepan (≥0,3 m de diferencia)
 const lvOpenOr=r=>r.bl.he!=null?lvOpen(r.bl.he):(r.bl.h>th.bwarn?2:r.bl.h>th.bgo?1:0);
 const mrango=b=>b.max-b.min>=0.3?`${b.min.toFixed(1)}–${b.max.toFixed(1)}`:b.h.toFixed(1);
+// Barra de turbidez (KD490): la raya negra es la media del mes; cada punto es verde si el agua está más limpia que la media y rojo si está más turbia
+function kdBar(mean,vals){if(!vals.length)return "";const mx=Math.max(mean*2,...vals.map(o=>o.v))*1.1,pos=v=>Math.min(98,Math.max(2,v/mx*100)).toFixed(1);
+  return `<div class="kdbar" role="img" aria-label="Turbidez frente a la media del mes: ${vals.map(o=>`${o.l} ${o.v>mean?"más turbia":"más limpia"} que la media`).join(", ")}"><div class="kdtrack"></div><div class="kdmean" style="left:${pos(mean)}%"><span>media ${mean.toFixed(3)}</span></div>${vals.map((o,k)=>`<div class="kdpt ${o.v>mean?"bad":"good"}" style="left:${pos(o.v)}%"></div><div class="kdlab ${o.v>mean?"bad":"good"}" style="left:${pos(o.v)}%;top:${k*13}px;transform:translateX(${pos(o.v)<25?"-8%":pos(o.v)>75?"-92%":"-50%"})">${o.l} ${o.v.toFixed(3)} · ${Math.abs(Math.round((o.v/mean-1)*100))} % ${o.v>mean?"más turbia":"más limpia"}</div>`).join("")}</div><div class="kdleg"><span>← agua más limpia</span><span>más turbia →</span></div>`}
 function nivelFinal(p,r,date,hr){const a=aemetFor(p,date,hr);let lv=r.lv,disc=false;if(a&&a.lv!=null){if(a.lv===2&&lv<2){lv=2;disc=true}else if(a.lv===1&&lv===0){lv=1;disc=true}else if(a.lv===0&&lv===2)disc=true}return {lv,disc}}
 // Ventana del día (7-20 h): el tramo seguido más largo en verde; si no hay, en ámbar; si no, mejor no bucear
 function ventanaDia(p,D,date,day){
@@ -786,7 +798,7 @@ function detail(D,idx){
    ${(()=>{const w=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;return w?`<dt>Tiempo</dt><dd>${w.i} ${w.t}${D.wx.temp[i]!=null?` · ${Math.round(D.wx.temp[i])} °C`:""}</dd>`:""})()}
    <dt>Temperatura del agua</dt><dd>${D.sst[i]!=null?D.sst[i].toFixed(1)+" °C":"–"}</dd>
    <dt>Lluvia 48 h previas</dt><dd>${Math.round(r48)} mm</dd>
-   ${(()=>{const ve=visEstim(cur,D,i,day);if(!ve)return "";const S=SAT[cur.id];const K=visK(cur.id);return `<dt>Visibilidad estimada</dt><dd><strong>~${Math.round(ve.v)} m</strong> (${ve.txt})${ve.why.length?" · "+esc(ve.why.join(", ")):""}${K.n>=3?` · ajustada con ${K.n} registros`:""}</dd>${S?`<dt>Copernicus</dt><dd>${S.diario?`KD490 ${S.diario.kd.toFixed(3)} m⁻¹ el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`:"sin dato reciente (nubes)"}${S.mes?` · media ${S.mes.mes.slice(5)}/${S.mes.mes.slice(0,4)}: ${S.mes.kd.toFixed(3)}`:""}${S.modelo&&S.modelo[date]?` · previsión del modelo para este día: ${S.modelo[date].toFixed(3)}`:""}</dd>`:""}`})()}
+   ${(()=>{const ve=visEstim(cur,D,i,day);if(!ve)return "";const S=SAT[cur.id];const K=visK(cur.id);return `<dt>Visibilidad estimada</dt><dd><strong>~${Math.round(ve.v)} m</strong> (${ve.txt})${ve.why.length?" · "+esc(ve.why.join(", ")):""}${K.n>=3?` · ajustada con ${K.n} registros`:""}</dd>${S?`<dt>Copernicus</dt><dd>${S.diario?`KD490 ${S.diario.kd.toFixed(3)} m⁻¹ el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`:"sin dato reciente (nubes)"}${S.mes?` · media ${S.mes.mes.slice(5)}/${S.mes.mes.slice(0,4)}: ${S.mes.kd.toFixed(3)}`:""}${S.modelo&&S.modelo[date]?` · previsión del modelo para este día: ${S.modelo[date].toFixed(3)}`:""}${S.mes?kdBar(S.mes.kd,[S.diario?{v:S.diario.kd,l:`satélite ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`}:null,S.modelo&&S.modelo[date]?{v:S.modelo[date],l:"previsión"}:null].filter(Boolean)):""}</dd>`:""}`})()}
    <dt>Acuerdo entre modelos</dt><dd><strong>${r.agree} de ${r.n}</strong> · confianza ${Math.round(r.conf*100)} %</dd>
   </dl>
   <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}</ul>
