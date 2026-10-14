@@ -157,7 +157,7 @@ th.tarde{color:var(--posidonia)}
     <h2 id="h-3d">La cala en 3D</h2>
     <p class="note" id="v3dwhen" style="margin:0 0 6px"></p>
     <div id="v3dbox" style="height:330px;border-radius:10px;overflow:hidden;background:linear-gradient(#cfe6f3,#eef4f2)"></div>
-    <p class="note">Relieve real medido por el ICGC (LiDAR y sonda, 2022-2024), con la altura exagerada ×1,6. Líneas blancas: profundidad (2, 5 y 10 m). Las olas y el rechupe son los de la hora que tengas seleccionada. Arrastra para girar; pellizca o usa la rueda para acercar.</p>
+    <p class="note">Relieve real medido por el ICGC (LiDAR y sonda, 2022-2024), con la altura exagerada ×1,6. Líneas blancas: profundidad (2, 5 y 10 m). Las olas y el rechupe son los de la hora que tengas seleccionada. Con un dedo giras; con dos, pellizcas para acercar y arrastras para desplazarte. En el ordenador: rueda para acercar y Mayúsculas + arrastrar (o botón derecho) para desplazarte. «Centrar» vuelve a la vista inicial.</p>
   </section>
   <section class="panel o1" aria-labelledby="h-cala">
     <h2 id="h-cala">Punto</h2>
@@ -236,7 +236,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-15e"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-15f"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -776,12 +776,18 @@ async function abrir3D(){
   for(const lv of [-2,-5,-10]){for(let k=0;k<160;k++){const x=ex+vx*k,z=ez+vz*k;if(Math.abs(x)>size/2-3||Math.abs(z)>size/2-3)break;if(hAt(x,z)<=lv){const sp=label(`${-lv} m`,"#0b3c5d");sp.scale.set(34,6.4,1);sp.position.set(x-vz*7,2.2,z+vx*7);sc.add(sp);break}}}
   const nl=label("N","#14232B");nl.scale.set(20,3.75,1);nl.position.set(0,6,-size/2-6);sc.add(nl);
   const grp=new T.Group();sc.add(grp);
-  let th=Math.atan2(vx,-vz),ph=0.95,R=145;const tg=new T.Vector3(ex*0.6,0,ez*0.6);
+  const th0=Math.atan2(vx,-vz);let th=th0,ph=0.95,R=145;const tg=new T.Vector3(ex*0.6,0,ez*0.6);
+  // desplazar la vista: la escena sigue al dedo; el centro no puede salir del dibujo
+  const pan=(dx,dy)=>{const s=R*0.0022,rx=-Math.cos(th),rz=-Math.sin(th),fx=-Math.sin(th),fz=Math.cos(th),lim=size/2;tg.x=Math.max(-lim,Math.min(lim,tg.x-rx*dx*s+fx*dy*s));tg.z=Math.max(-lim,Math.min(lim,tg.z-rz*dx*s+fz*dy*s))};
   const draw=()=>{cam.position.set(tg.x+R*Math.sin(ph)*Math.sin(th),R*Math.cos(ph),tg.z-R*Math.sin(ph)*Math.cos(th));cam.lookAt(tg);ren.render(sc,cam)};
   const el=ren.domElement,ptr=new Map();let pd=0;el.style.touchAction="none";
   el.addEventListener("pointerdown",e=>{el.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);if(ptr.size===2){const [p1,p2]=[...ptr.values()];pd=Math.hypot(p1[0]-p2[0],p1[1]-p2[1])}});
-  el.addEventListener("pointermove",e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);
-    if(ptr.size===1){th-=(e.clientX-o[0])*0.008;ph=Math.max(0.15,Math.min(1.45,ph-(e.clientY-o[1])*0.006))}else if(ptr.size===2){const [p1,p2]=[...ptr.values()],nd=Math.hypot(p1[0]-p2[0],p1[1]-p2[1]);if(pd)R=Math.max(40,Math.min(400,R*pd/nd));pd=nd}draw()});
+  el.addEventListener("pointermove",e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId),pv=[...ptr.values()],om=pv.length===2?[(pv[0][0]+pv[1][0])/2,(pv[0][1]+pv[1][1])/2]:null;ptr.set(e.pointerId,[e.clientX,e.clientY]);
+    if(ptr.size===1){if(e.shiftKey||e.buttons===2||e.buttons===4)pan(e.clientX-o[0],e.clientY-o[1]);else{th-=(e.clientX-o[0])*0.008;ph=Math.max(0.15,Math.min(1.45,ph-(e.clientY-o[1])*0.006))}}
+    else if(ptr.size===2){const [p1,p2]=[...ptr.values()],nd=Math.hypot(p1[0]-p2[0],p1[1]-p2[1]);if(pd)R=Math.max(40,Math.min(400,R*pd/nd));pd=nd;if(om)pan((p1[0]+p2[0])/2-om[0],(p1[1]+p2[1])/2-om[1])}draw()});
+  el.addEventListener("contextmenu",e=>e.preventDefault());
+  const bt=document.createElement("button");bt.type="button";bt.textContent="Centrar";bt.className="btn ghost";bt.style.cssText="position:absolute;top:8px;right:8px;padding:3px 10px;font-size:12px;background:rgba(255,255,255,.85)";box.style.position="relative";box.appendChild(bt);
+  bt.onclick=()=>{th=th0;ph=0.95;R=145;tg.set(ex*0.6,0,ez*0.6);draw()};
   const up=e=>{ptr.delete(e.pointerId);pd=0};el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
   el.addEventListener("wheel",e=>{e.preventDefault();R=Math.max(40,Math.min(400,R*(1+e.deltaY*0.001)));draw()},{passive:false});
   V3={id:cur.id,T,sc,grp,ex,ez,vx,vz,X,label,draw,size,ren};upd3D(window._r3);
