@@ -236,7 +236,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-16a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-16b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -754,9 +754,10 @@ function grid3d(d){const N=d.N,qd=d.q||4,g=d.z.split(";").map(r=>{const v=[];r.s
 // batimetría exterior (EMODnet, rest.emodnet-bathymetry.eu): 25 perfiles de 1,6 km; se guarda en el móvil para no repetir la descarga
 async function batExterior(d){const key="calas4-bat-"+cur.id;try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c&&c.v===1&&c.c===d.c.join())return c}catch(e){}
   const n=25,SZ=1600,half=SZ/2,ky=110574,kx=111320*Math.cos(d.c[0]*Math.PI/180),step=SZ/(n-1);
-  const rows=await Promise.all([...Array(n).keys()].map(async r=>{const la=d.c[0]+(half-r*step)/ky,lw=d.c[1]-half/kx,le=d.c[1]+half/kx;
-    try{const a=await (await fetch(`https://rest.emodnet-bathymetry.eu/depth_profile?geom=LINESTRING(${lw.toFixed(5)}%20${la.toFixed(5)},${le.toFixed(5)}%20${la.toFixed(5)})`)).json();
-      return [...Array(n).keys()].map(q=>{const v=a[Math.round(q*(a.length-1)/(n-1))];return v==null||isNaN(v)?3:+v})}catch(e){return null}}));
+  const fila=async r=>{const la=d.c[0]+(half-r*step)/ky,lw=d.c[1]-half/kx,le=d.c[1]+half/kx;
+    for(let k=0;k<4;k++){try{const a=await (await fetch(`https://rest.emodnet-bathymetry.eu/depth_profile?geom=LINESTRING(${lw.toFixed(5)}%20${la.toFixed(5)},${le.toFixed(5)}%20${la.toFixed(5)})`)).json();
+      return [...Array(n).keys()].map(q=>{const v=a[Math.round(q*(a.length-1)/(n-1))];return v==null||isNaN(v)?3:+v})}catch(e){await new Promise(z=>setTimeout(z,600*(k+1)))}}return null};
+  const rows=[];for(let r=0;r<n;r+=4){rows.push(...await Promise.all([...Array(Math.min(4,n-r)).keys()].map(k=>fila(r+k))))} // de 4 en 4: el servidor corta si se piden todas a la vez
   if(rows.some(x=>!x))return null;const B={v:1,c:d.c.join(),n,size:SZ,z:rows};try{localStorage.setItem(key,JSON.stringify(B))}catch(e){}return B}
 async function abrir3D(){
   if(V3&&V3.ren){try{V3.ren.dispose();V3.ren.forceContextLoss()}catch(e){}} // libera el visor anterior al cambiar de cala
