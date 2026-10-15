@@ -254,7 +254,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-16n"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-16o"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -825,7 +825,7 @@ async function abrir3D(){
     const aplica=()=>{if(!matFoto)return;bf.textContent=modo==="foto"?"Ver relieve":"Ver foto";mesh.material=modo==="foto"?matFoto:matRel;w.material.opacity=modo==="foto"?0.12:0.3;draw()};
     const la0=d.c[0]-size/2/ky,la1=d.c[0]+size/2/ky,lo0=d.c[1]-size/2/kx,lo1=d.c[1]+size/2/kx;
     new T.TextureLoader().setCrossOrigin("anonymous").load(`https://geoserveis.icgc.cat/servei/catalunya/orto-territorial/wms?service=WMS&version=1.1.1&request=GetMap&layers=ortofoto_color_vigent&styles=&srs=EPSG:4326&bbox=${lo0},${la0},${lo1},${la1}&width=1024&height=1024&format=image/jpeg`,
-      tex=>{tex.anisotropy=4;matFoto=new T.MeshLambertMaterial({map:tex,side:T.DoubleSide});aplica()},undefined,()=>{bf.style.display="none"});
+      tex=>{tex.anisotropy=4;matFoto=new T.MeshLambertMaterial({map:tex,color:0xb0b0b0,side:T.DoubleSide}) /* algo más oscura: con la luz de la escena la foto salía «quemada» */;aplica()},undefined,()=>{bf.style.display="none"});
     bf.onclick=()=>{if(!matFoto)return;modo=modo==="foto"?"relieve":"foto";localStorage.setItem("calas4-3dmodo",modo);aplica()}}
   const up=e=>{ptr.delete(e.pointerId);pd=0};el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
   el.addEventListener("wheel",e=>{e.preventDefault();R=Math.max(40,Math.min(400,R*(1+e.deltaY*0.001)));draw()},{passive:false});
