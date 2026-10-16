@@ -257,7 +257,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-17i"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-17j"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -897,13 +897,15 @@ const SC_T=[[8,[183,212,240]],[16,[214,236,214]],[22,[251,234,170]],[28,[248,192
 // q: celda del modelo en mar abierto más cercana (la de la propia cala cae en la costa y no tiene dato); lv: profundidades del modelo
 const CORR={ullastres:{q:[41.856,3.208],lv:["-5.464963436126709","-10.536603927612305","-19.398210525512695","-29.885643005371094","-42.14503860473633"],ref:"6–50 m"},
   boreas:{q:[41.825,3.125],lv:["-5.464963436126709","-16.270586013793945","-29.885643005371094"],ref:"28 m",refLv:2}},CORR_D={},CORR_ING={};
+// al abrir la app, se descargan en segundo plano las corrientes de los puntos de barco: al entrar ya están
+setTimeout(async()=>{const t0=[],p=x=>String(x).padStart(2,"0");for(let k=0;k<27;k++){const d=new Date(Date.now()+k*3*3600e3);t0.push(`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:00`)}for(const id of Object.keys(CORR)){const t=t0;try{const ch=await corrLoad(id,t.slice(0,1));if(ch&&cur&&cur.id===id)render()}catch(e){}}for(const id of Object.keys(CORR)){try{const ch=await corrLoad(id,t0);if(ch&&cur&&cur.id===id)render()}catch(e){}}},3000);
 const corrSlot=iso=>{const d=new Date(iso),h=d.getUTCHours(),s=[6,9,12,15,18,21].reduce((a,b)=>Math.abs(b-h)<Math.abs(a-h)?b:a);d.setUTCHours(s,0,0,0);return d.toISOString().slice(0,19)+"Z"};
 function corrUrl(c,vr,e,t){const z=7,td=360/Math.pow(2,z+1),cx=(c.q[1]+180)/td,cy=(90-c.q[0])/td,col=Math.floor(cx),row=Math.floor(cy),I=Math.floor((cx-col)*256),J=Math.floor((cy-row)*256);
   return `https://wmts.marine.copernicus.eu/teroWmts?service=WMTS&request=GetFeatureInfo&version=1.0.0&layer=MEDSEA_ANALYSISFORECAST_PHY_006_013/cmems_mod_med_phy-cur_anfc_4.2km-3D_PT1H-m_202511/${vr}&style=&tilematrixset=EPSG:4326&tilematrix=${z}&tilerow=${row}&tilecol=${col}&i=${I}&j=${J}&infoformat=application/json&elevation=${e}&time=${t}`}
 async function corrLoad(id,times){const c=CORR[id];if(!c||CORR_ING[id])return false;CORR_ING[id]=1;const key="calas4-corr-"+id;let st={};try{st=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
   const now=Date.now(),need=[...new Set(times.map(corrSlot))].filter(t=>Date.parse(t)<now+80*3600e3&&!(st[t]&&now-st[t].f<6*3600e3)),jobs=[],res={};
   need.forEach(t=>c.lv.forEach((e,k)=>["uo","vo"].forEach(vr=>jobs.push({t,k,vr,e}))));
-  for(let i=0;i<jobs.length;i+=16)await Promise.all(jobs.slice(i,i+16).map(async j=>{try{const x=await (await fetch(corrUrl(c,j.vr,j.e,j.t))).json();const v=x.features&&x.features[0]?x.features[0].properties.value:null;(res[j.t]=res[j.t]||{})[j.vr+j.k]=v}catch(err){}}));
+  for(let i=0;i<jobs.length;i+=24)await Promise.all(jobs.slice(i,i+16).map(async j=>{try{const x=await (await fetch(corrUrl(c,j.vr,j.e,j.t))).json();const v=x.features&&x.features[0]?x.features[0].properties.value:null;(res[j.t]=res[j.t]||{})[j.vr+j.k]=v}catch(err){}}));
   need.forEach(t=>{const o=res[t]||{},L=c.lv.map((e,k)=>o["uo"+k]!=null&&o["vo"+k]!=null?[+(+o["uo"+k]).toFixed(3),+(+o["vo"+k]).toFixed(3)]:null);if(L.some(Boolean))st[t]={f:now,L}});
   Object.keys(st).forEach(t=>{if(Date.parse(t)<now-2*86400e3)delete st[t]});try{localStorage.setItem(key,JSON.stringify(st))}catch(e){}CORR_D[id]=st;CORR_ING[id]=0;return need.length>0}
 function corrGet(id,localIso){const c=CORR[id];if(!c)return null;if(!CORR_D[id]){try{CORR_D[id]=JSON.parse(localStorage.getItem("calas4-corr-"+id)||"{}")}catch(e){CORR_D[id]={}}}
@@ -913,10 +915,12 @@ const SC_C=[[0,[255,255,255]],[0.25,[250,212,205]],[0.5,[236,136,118]],[0.8,[198
 function corrTxt(id,localIso){const o=corrGet(id,localIso);if(!o)return CORR[id]?`<br>🌀 <b>Corriente:</b> cargando el modelo de Copernicus…`:"";
   return `<br>🌀 <b>Corriente</b> (modelo Copernicus, zona de 4 km): `+o.lv.filter(Boolean).map(x=>`a ${Math.round(x.dep)} m ${x.kn.toFixed(1).replace(".",",")} nudos hacia el ${RUMB(x.d)}`).join(" · ")+`. Las partículas del 3D se mueven con ella; el modelo no ve los remolinos junto a la pared o el pecio.`}
 // partículas en el 3D: cada una sigue la corriente de su profundidad; más rápida y más roja cuanto más fuerte
-function corr3D(){if(!V3)return;const {T,sc,X,size,d}=V3;if(V3.pts){sc.remove(V3.pts);V3.pts.geometry.dispose();V3.pts=null}
+function corr3D(){if(!V3)return;const {T,sc,X,size,d}=V3;if(V3.pts){sc.remove(V3.pts);V3.pts.geometry.dispose();V3.pts=null}if(V3.ptsLab){sc.remove(V3.ptsLab);V3.ptsLab=null}
   const o=CORR[V3.id]&&window._r3t?corrGet(V3.id,window._r3t):null;if(!o){V3.draw();return}const lv=o.lv.filter(Boolean).sort((a,b)=>a.dep-b.dep),bot=(d.dmax||30),N=600,pos=new Float32Array(N*3),col=new Float32Array(N*3),vel=new Float32Array(N*2),K=size/(8*0.26);
   const at=dep=>{if(dep<=lv[0].dep)return lv[0];for(let i=1;i<lv.length;i++)if(dep<=lv[i].dep){const a=lv[i-1],b=lv[i],f=(dep-a.dep)/(b.dep-a.dep);return {u:a.u+(b.u-a.u)*f,v:a.v+(b.v-a.v)*f}}return lv[lv.length-1]};
-  for(let i=0;i<N;i++){const dep=2+Math.random()*(bot-2),c=at(dep),kn=Math.hypot(c.u,c.v)*1.944,rgb=corrCol(kn).match(/\d+/g).map(Number);pos[i*3]=(Math.random()-0.5)*size;pos[i*3+1]=-dep*X;pos[i*3+2]=(Math.random()-0.5)*size;vel[i*2]=c.u*K;vel[i*2+1]=-c.v*K;col.set([rgb[0]/255,rgb[1]/255,rgb[2]/255],i*3)}
+  if(V3.ptsLab){sc.remove(V3.ptsLab);V3.ptsLab=null}const lab=new T.Group();lv.forEach(x=>{const l=V3.label(`${Math.round(x.dep)} m · ${x.kn.toFixed(1).replace(".",",")} kn → ${RUMB(x.d)}`,"#14232B");l.scale.multiplyScalar(0.55);l.position.set(-size/2+size*0.12,-x.dep*X,-size/2+size*0.05);lab.add(l)});sc.add(lab);V3.ptsLab=lab;
+  // estratos: las partículas se agrupan en capas finas a las profundidades del modelo, cada capa con su corriente
+  for(let i=0;i<N;i++){const L0=lv[i%lv.length],dep=Math.max(1,Math.min(bot,L0.dep+(Math.random()-0.5)*3)),c=at(dep),kn=Math.hypot(c.u,c.v)*1.944,rgb=corrCol(kn).match(/\d+/g).map(Number);pos[i*3]=(Math.random()-0.5)*size;pos[i*3+1]=-dep*X;pos[i*3+2]=(Math.random()-0.5)*size;vel[i*2]=c.u*K;vel[i*2+1]=-c.v*K;col.set([rgb[0]/255,rgb[1]/255,rgb[2]/255],i*3)}
   const g=new T.BufferGeometry();g.setAttribute("position",new T.BufferAttribute(pos,3));g.setAttribute("color",new T.BufferAttribute(col,3));
   const P=new T.Points(g,new T.PointsMaterial({size:size/55,vertexColors:true,transparent:true,opacity:0.95,depthWrite:false}));sc.add(P);V3.pts=P;let last=performance.now();
   const tick=now=>{if(!V3||V3.pts!==P)return;const dt=Math.min(0.05,(now-last)/1000);last=now;const h=size/2;for(let i=0;i<N;i++){let x=pos[i*3]+vel[i*2]*dt,z=pos[i*3+2]+vel[i*2+1]*dt;if(x>h)x-=size;if(x<-h)x+=size;if(z>h)z-=size;if(z<-h)z+=size;pos[i*3]=x;pos[i*3+2]=z}g.attributes.position.needsUpdate=true;V3.draw();requestAnimationFrame(tick)};requestAnimationFrame(tick)}
@@ -955,7 +959,7 @@ function render(){
     (AEMET_KEY_BAD?` <b style="color:var(--stop)">⚠️ La clave de AEMET ha caducado o no es válida.</b> Pide una nueva gratis en opendata.aemet.es y cámbiala en Cloudflare → Workers → buceo-api → Settings → Variables.`:"")+(A?` AEMET: ${esc(A.nombre)}.`:API()?(cur.aemet?(AEMET_KEY_BAD?"":" AEMET sin datos ahora."):" Sin playa AEMET asignada."):" Conecta el servidor en «Conexión» para ver AEMET y sincronizar.")+(pending.length?` ${pending.length} registro(s) pendientes de subir. <button class="btn ghost" id="upnow" style="padding:2px 9px;font-size:13px">Subir ahora</button>`:"");
   if($("upnow"))$("upnow").onclick=async()=>{if(serverOK){await flushPending();render()}else await pedirPin()};
   const idx=gridIdx(D),start=new Date(D.today+"T12:00:00");vistaBtn();
-  if(CORR[cur.id])corrLoad(cur.id,idx.map(i=>D.times[i])).then(ch=>{if(ch)render()});
+  if(CORR[cur.id]){const id0=cur.id,ft=D.times[sel??firstFut(D,idx)];corrLoad(id0,[ft]).then(ch=>{if(ch&&cur.id===id0)render();return corrLoad(id0,idx.map(i=>D.times[i]))}).then(ch=>{if(ch&&cur.id===id0)render()})} // primero la hora que se mira (10 peticiones, 1-2 s), luego el resto
   if(true){const wr=$("grid").parentNode,sl=wr.scrollLeft;$("grid").className="wg";$("grid").innerHTML=windyGrid(D,idx,start);wr.scrollLeft=sl;
     $("grid").querySelectorAll("td[data-i]").forEach(b=>b.onclick=()=>{sel=+b.dataset.i;selDay=+b.dataset.day;render()});detail(D,idx);renderLogs();return}
   $("grid").className="";
