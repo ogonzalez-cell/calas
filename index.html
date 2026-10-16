@@ -257,7 +257,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-17j"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-17k"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -896,18 +896,18 @@ const SC_T=[[8,[183,212,240]],[16,[214,236,214]],[22,[251,234,170]],[28,[248,192
 // ---------- corrientes submarinas: Copernicus MEDSEA, modelo 3D horario (celdas de 4,2 km) ----------
 // q: celda del modelo en mar abierto más cercana (la de la propia cala cae en la costa y no tiene dato); lv: profundidades del modelo
 const CORR={ullastres:{q:[41.856,3.208],lv:["-5.464963436126709","-10.536603927612305","-19.398210525512695","-29.885643005371094","-42.14503860473633"],ref:"6–50 m"},
-  boreas:{q:[41.825,3.125],lv:["-5.464963436126709","-16.270586013793945","-29.885643005371094"],ref:"28 m",refLv:2}},CORR_D={},CORR_ING={};
+  boreas:{q:[41.825,3.125],lv:["-5.464963436126709","-16.270586013793945","-29.885643005371094"],ref:"28 m",refLv:2}},CORR_D={},CORR_ING={},CORR_TRY={};
 // al abrir la app, se descargan en segundo plano las corrientes de los puntos de barco: al entrar ya están
-setTimeout(async()=>{const t0=[],p=x=>String(x).padStart(2,"0");for(let k=0;k<27;k++){const d=new Date(Date.now()+k*3*3600e3);t0.push(`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:00`)}for(const id of Object.keys(CORR)){const t=t0;try{const ch=await corrLoad(id,t.slice(0,1));if(ch&&cur&&cur.id===id)render()}catch(e){}}for(const id of Object.keys(CORR)){try{const ch=await corrLoad(id,t0);if(ch&&cur&&cur.id===id)render()}catch(e){}}},3000);
+setTimeout(async()=>{const t0=[],p=x=>String(x).padStart(2,"0");for(let k=0;k<27;k++){const d=new Date(Date.now()+k*3*3600e3);t0.push(`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:00`)}for(const id of Object.keys(CORR)){const t=t0;try{const ch=await corrLoad(id,t.slice(0,1));if(ch&&cur&&cur.id===id)render()}catch(e){}}for(const id of Object.keys(CORR)){try{const ch=await corrLoad(id,t0);if(ch&&cur&&cur.id===id)render()}catch(e){}}},10000);
 const corrSlot=iso=>{const d=new Date(iso),h=d.getUTCHours(),s=[6,9,12,15,18,21].reduce((a,b)=>Math.abs(b-h)<Math.abs(a-h)?b:a);d.setUTCHours(s,0,0,0);return d.toISOString().slice(0,19)+"Z"};
 function corrUrl(c,vr,e,t){const z=7,td=360/Math.pow(2,z+1),cx=(c.q[1]+180)/td,cy=(90-c.q[0])/td,col=Math.floor(cx),row=Math.floor(cy),I=Math.floor((cx-col)*256),J=Math.floor((cy-row)*256);
   return `https://wmts.marine.copernicus.eu/teroWmts?service=WMTS&request=GetFeatureInfo&version=1.0.0&layer=MEDSEA_ANALYSISFORECAST_PHY_006_013/cmems_mod_med_phy-cur_anfc_4.2km-3D_PT1H-m_202511/${vr}&style=&tilematrixset=EPSG:4326&tilematrix=${z}&tilerow=${row}&tilecol=${col}&i=${I}&j=${J}&infoformat=application/json&elevation=${e}&time=${t}`}
 async function corrLoad(id,times){const c=CORR[id];if(!c||CORR_ING[id])return false;CORR_ING[id]=1;const key="calas4-corr-"+id;let st={};try{st=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
-  const now=Date.now(),need=[...new Set(times.map(corrSlot))].filter(t=>Date.parse(t)<now+80*3600e3&&!(st[t]&&now-st[t].f<6*3600e3)),jobs=[],res={};
+  const now=Date.now(),need=[...new Set(times.map(corrSlot))].filter(t=>Date.parse(t)<now+80*3600e3&&!(st[t]&&now-st[t].f<6*3600e3)&&!(CORR_TRY[id+t]>now-30*60e3)),jobs=[],res={};let nuevo=0;need.forEach(t=>CORR_TRY[id+t]=now); /* lo que falle no se repite en 30 min: evita bucles de recarga */
   need.forEach(t=>c.lv.forEach((e,k)=>["uo","vo"].forEach(vr=>jobs.push({t,k,vr,e}))));
-  for(let i=0;i<jobs.length;i+=24)await Promise.all(jobs.slice(i,i+16).map(async j=>{try{const x=await (await fetch(corrUrl(c,j.vr,j.e,j.t))).json();const v=x.features&&x.features[0]?x.features[0].properties.value:null;(res[j.t]=res[j.t]||{})[j.vr+j.k]=v}catch(err){}}));
-  need.forEach(t=>{const o=res[t]||{},L=c.lv.map((e,k)=>o["uo"+k]!=null&&o["vo"+k]!=null?[+(+o["uo"+k]).toFixed(3),+(+o["vo"+k]).toFixed(3)]:null);if(L.some(Boolean))st[t]={f:now,L}});
-  Object.keys(st).forEach(t=>{if(Date.parse(t)<now-2*86400e3)delete st[t]});try{localStorage.setItem(key,JSON.stringify(st))}catch(e){}CORR_D[id]=st;CORR_ING[id]=0;return need.length>0}
+  for(let i=0;i<jobs.length;i+=12)await Promise.all(jobs.slice(i,i+16).map(async j=>{try{const x=await (await fetch(corrUrl(c,j.vr,j.e,j.t))).json();const v=x.features&&x.features[0]?x.features[0].properties.value:null;(res[j.t]=res[j.t]||{})[j.vr+j.k]=v}catch(err){}}));
+  need.forEach(t=>{const o=res[t]||{},L=c.lv.map((e,k)=>o["uo"+k]!=null&&o["vo"+k]!=null?[+(+o["uo"+k]).toFixed(3),+(+o["vo"+k]).toFixed(3)]:null);if(L.some(Boolean)){st[t]={f:now,L};nuevo++}});
+  Object.keys(st).forEach(t=>{if(Date.parse(t)<now-2*86400e3)delete st[t]});try{localStorage.setItem(key,JSON.stringify(st))}catch(e){}CORR_D[id]=st;CORR_ING[id]=0;return nuevo>0}
 function corrGet(id,localIso){const c=CORR[id];if(!c)return null;if(!CORR_D[id]){try{CORR_D[id]=JSON.parse(localStorage.getItem("calas4-corr-"+id)||"{}")}catch(e){CORR_D[id]={}}}
   const k=CORR_D[id][corrSlot(localIso)];if(!k)return null;const lv=k.L.map((uv,i)=>uv?{dep:-c.lv[i],kn:Math.hypot(uv[0],uv[1])*1.944,d:(Math.atan2(uv[0],uv[1])*180/Math.PI+360)%360,u:uv[0],v:uv[1]}:null);
   const ok=lv.filter(Boolean);if(!ok.length)return null;const ref=c.refLv!=null?lv[c.refLv]:ok.reduce((a,b)=>b.kn>a.kn?b:a);return {lv,ref}}
@@ -915,6 +915,8 @@ const SC_C=[[0,[255,255,255]],[0.25,[250,212,205]],[0.5,[236,136,118]],[0.8,[198
 function corrTxt(id,localIso){const o=corrGet(id,localIso);if(!o)return CORR[id]?`<br>🌀 <b>Corriente:</b> cargando el modelo de Copernicus…`:"";
   return `<br>🌀 <b>Corriente</b> (modelo Copernicus, zona de 4 km): `+o.lv.filter(Boolean).map(x=>`a ${Math.round(x.dep)} m ${x.kn.toFixed(1).replace(".",",")} nudos hacia el ${RUMB(x.d)}`).join(" · ")+`. Las partículas del 3D se mueven con ella; el modelo no ve los remolinos junto a la pared o el pecio.`}
 // partículas en el 3D: cada una sigue la corriente de su profundidad; más rápida y más roja cuanto más fuerte
+// el 3D solo se anima mientras se ve en pantalla
+try{new IntersectionObserver(es=>{window._v3off=!es[0].isIntersecting}).observe(document.getElementById("v3dbox"))}catch(e){}
 function corr3D(){if(!V3)return;const {T,sc,X,size,d}=V3;if(V3.pts){sc.remove(V3.pts);V3.pts.geometry.dispose();V3.pts=null}if(V3.ptsLab){sc.remove(V3.ptsLab);V3.ptsLab=null}
   const o=CORR[V3.id]&&window._r3t?corrGet(V3.id,window._r3t):null;if(!o){V3.draw();return}const lv=o.lv.filter(Boolean).sort((a,b)=>a.dep-b.dep),bot=(d.dmax||30),N=600,pos=new Float32Array(N*3),col=new Float32Array(N*3),vel=new Float32Array(N*2),K=size/(8*0.26);
   const at=dep=>{if(dep<=lv[0].dep)return lv[0];for(let i=1;i<lv.length;i++)if(dep<=lv[i].dep){const a=lv[i-1],b=lv[i],f=(dep-a.dep)/(b.dep-a.dep);return {u:a.u+(b.u-a.u)*f,v:a.v+(b.v-a.v)*f}}return lv[lv.length-1]};
@@ -923,7 +925,7 @@ function corr3D(){if(!V3)return;const {T,sc,X,size,d}=V3;if(V3.pts){sc.remove(V3
   for(let i=0;i<N;i++){const L0=lv[i%lv.length],dep=Math.max(1,Math.min(bot,L0.dep+(Math.random()-0.5)*3)),c=at(dep),kn=Math.hypot(c.u,c.v)*1.944,rgb=corrCol(kn).match(/\d+/g).map(Number);pos[i*3]=(Math.random()-0.5)*size;pos[i*3+1]=-dep*X;pos[i*3+2]=(Math.random()-0.5)*size;vel[i*2]=c.u*K;vel[i*2+1]=-c.v*K;col.set([rgb[0]/255,rgb[1]/255,rgb[2]/255],i*3)}
   const g=new T.BufferGeometry();g.setAttribute("position",new T.BufferAttribute(pos,3));g.setAttribute("color",new T.BufferAttribute(col,3));
   const P=new T.Points(g,new T.PointsMaterial({size:size/55,vertexColors:true,transparent:true,opacity:0.95,depthWrite:false}));sc.add(P);V3.pts=P;let last=performance.now();
-  const tick=now=>{if(!V3||V3.pts!==P)return;const dt=Math.min(0.05,(now-last)/1000);last=now;const h=size/2;for(let i=0;i<N;i++){let x=pos[i*3]+vel[i*2]*dt,z=pos[i*3+2]+vel[i*2+1]*dt;if(x>h)x-=size;if(x<-h)x+=size;if(z>h)z-=size;if(z<-h)z+=size;pos[i*3]=x;pos[i*3+2]=z}g.attributes.position.needsUpdate=true;V3.draw();requestAnimationFrame(tick)};requestAnimationFrame(tick)}
+  const tick=now=>{if(!V3||V3.pts!==P)return;if(document.hidden||window._v3off||now-last<33){requestAnimationFrame(tick);return}const dt=Math.min(0.08,(now-last)/1000);last=now; /* 30 fps y en pausa si el 3D no está en pantalla: así no frena el móvil */const h=size/2;for(let i=0;i<N;i++){let x=pos[i*3]+vel[i*2]*dt,z=pos[i*3+2]+vel[i*2+1]*dt;if(x>h)x-=size;if(x<-h)x+=size;if(z>h)z-=size;if(z<-h)z+=size;pos[i*3]=x;pos[i*3+2]=z}g.attributes.position.needsUpdate=true;V3.draw();requestAnimationFrame(tick)};requestAnimationFrame(tick)}
 // horas ya pasadas de hoy fuera: la tabla empieza en la hora actual
 const nowKey=()=>{const n=new Date(),p=x=>String(x).padStart(2,"0");return `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}T${p(n.getHours())}`};
 const firstFut=(D,idx)=>idx.find(i=>D.times[i].slice(0,13)>=nowKey())??idx[0];
