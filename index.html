@@ -257,7 +257,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-17h"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-17i"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -918,12 +918,16 @@ function corr3D(){if(!V3)return;const {T,sc,X,size,d}=V3;if(V3.pts){sc.remove(V3
   const at=dep=>{if(dep<=lv[0].dep)return lv[0];for(let i=1;i<lv.length;i++)if(dep<=lv[i].dep){const a=lv[i-1],b=lv[i],f=(dep-a.dep)/(b.dep-a.dep);return {u:a.u+(b.u-a.u)*f,v:a.v+(b.v-a.v)*f}}return lv[lv.length-1]};
   for(let i=0;i<N;i++){const dep=2+Math.random()*(bot-2),c=at(dep),kn=Math.hypot(c.u,c.v)*1.944,rgb=corrCol(kn).match(/\d+/g).map(Number);pos[i*3]=(Math.random()-0.5)*size;pos[i*3+1]=-dep*X;pos[i*3+2]=(Math.random()-0.5)*size;vel[i*2]=c.u*K;vel[i*2+1]=-c.v*K;col.set([rgb[0]/255,rgb[1]/255,rgb[2]/255],i*3)}
   const g=new T.BufferGeometry();g.setAttribute("position",new T.BufferAttribute(pos,3));g.setAttribute("color",new T.BufferAttribute(col,3));
-  const P=new T.Points(g,new T.PointsMaterial({size:size/110,vertexColors:true,transparent:true,opacity:0.95}));sc.add(P);V3.pts=P;let last=performance.now();
+  const P=new T.Points(g,new T.PointsMaterial({size:size/55,vertexColors:true,transparent:true,opacity:0.95,depthWrite:false}));sc.add(P);V3.pts=P;let last=performance.now();
   const tick=now=>{if(!V3||V3.pts!==P)return;const dt=Math.min(0.05,(now-last)/1000);last=now;const h=size/2;for(let i=0;i<N;i++){let x=pos[i*3]+vel[i*2]*dt,z=pos[i*3+2]+vel[i*2+1]*dt;if(x>h)x-=size;if(x<-h)x+=size;if(z>h)z-=size;if(z<-h)z+=size;pos[i*3]=x;pos[i*3+2]=z}g.attributes.position.needsUpdate=true;V3.draw();requestAnimationFrame(tick)};requestAnimationFrame(tick)}
+// horas ya pasadas de hoy fuera: la tabla empieza en la hora actual
+const nowKey=()=>{const n=new Date(),p=x=>String(x).padStart(2,"0");return `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}T${p(n.getHours())}`};
+const firstFut=(D,idx)=>idx.find(i=>D.times[i].slice(0,13)>=nowKey())??idx[0];
 function windyGrid(D,idx,start){
   const pl=cur.tipo==="playa",cols=[];
   for(let day=0;day<7;day++){const dt=new Date(start);dt.setDate(start.getDate()+day);const ii=idx.slice(day*HOURS.length,(day+1)*HOURS.length);ii.forEach((i,k)=>cols.push({i,day,k,dt,date:dt.toLocaleDateString("sv-SE"),r:evalAt(cur,i,day)}))}
-  const S=sel??idx[0],td=(c,inner,st="",cl="")=>`<td class="${c.k===0?"dsep ":""}${c.i===S?"sel ":""}${cl}" data-i="${c.i}" data-day="${c.day}"${st?` style="${st}"`:""}>${inner}</td>`;
+  {const nk=nowKey(),vc=cols.filter(c=>D.times[c.i].slice(0,13)>=nk);if(vc.length)cols.splice(0,cols.length,...vc);cols.forEach((c,j)=>{c.k=j&&cols[j-1].day===c.day?1:0})}
+  const S=sel??firstFut(D,idx),td=(c,inner,st="",cl="")=>`<td class="${c.k===0?"dsep ":""}${c.i===S?"sel ":""}${cl}" data-i="${c.i}" data-day="${c.day}"${st?` style="${st}"`:""}>${inner}</td>`;
   let h=`<thead><tr><th class="lab"></th>`;
   cols.forEach(c=>{if(c.k)return;const n=cols.filter(x=>x.day===c.day).length,v=ventanaDia(cur,D,c.date,c.day);
     h+=`<th class="wday dsep" colspan="${n}"><b>${DIAS[c.dt.getDay()].toUpperCase()} ${c.dt.getDate()}</b>${v?` <span class="apto a${v.lv}">${v.txt}</span>`:""}${v&&v.st?` <span class="apto a2" title="${esc(v.st)}">⛈️</span>`:""}${v&&v.wt?` <span class="apto a1" title="${esc(v.wt)}">💨</span>`:""}</th>`});
@@ -1000,7 +1004,7 @@ function explica(p,r,dt,hr){
   return `<b>${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00</b><br>💨 ${esc(lw)}<br>🌊 ${esc(lm)}${res?`<br><span class="cres">${esc(res)}</span>`:""}${r.rch?`<br>↩️ <b>Rechupe ${RECH_TXT[r.rch.lv]}:</b> ${rechTxt(r.rch)}`:""}${r.windWarn?`<br>💨 <b>Ojo al viento:</b> ${esc(r.windWarn.txt)}.`:""}${r.storm?`<br>⛈️ <b>Tiempo:</b> tormenta prevista a esta hora. El mar permite entrar, pero con rayos y rachas no conviene ir.`:""}`;
 }
 function detail(D,idx){
-  const i=sel??idx[0],day=sel==null?0:selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";$("cexp").innerHTML="";return}
+  const i=sel??firstFut(D,idx),day=sel==null?Math.floor(idx.indexOf(i)/HOURS.length):selDay,r=evalAt(cur,i,day);compass(r);if(!r){$("detail").innerHTML="";$("cexp").innerHTML="";return}
   const date=D.times[i].slice(0,10),hr=+D.times[i].slice(11,13),dt=new Date(date+"T12:00:00"),a=aemetFor(cur,date,hr),r48=rain48(D,date),playa=cur.tipo==="playa";
   $("cexp").innerHTML=explica(cur,r,dt,hr);$("cexp3d").innerHTML=$("cexp").innerHTML+corrTxt(cur.id,D.times[i]);/* con 3D, la explicación va bajo el dibujo */
   window._r3=r;window._r3t=D.times[i];window._r3w=`${DIAS[dt.getDay()]} ${dt.getDate()}, ${hr}:00`;if(V3&&V3.id===cur.id){upd3D(r);corr3D()}
