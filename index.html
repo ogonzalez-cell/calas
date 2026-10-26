@@ -68,6 +68,7 @@ td.day{font-weight:600;white-space:nowrap;padding-right:8px}td.day small{display
 .log li{font-size:13px;margin:2px 0}
 details summary{cursor:pointer;font:600 18px "Barlow Condensed",sans-serif}
 #barco-ctl{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.chips button{border:1.5px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:6px 12px;font:600 13px Barlow,sans-serif;cursor:pointer}.chips button[aria-pressed="true"]{background:#0E2A3A;border-color:#0E2A3A;color:#fff}
 #grid.wg{border-collapse:separate;border-spacing:0;font:500 13px/1.15 Barlow,sans-serif;width:max-content}
 #grid.wg th.lab{position:sticky;left:0;z-index:3;background:var(--paper);text-align:left;font:600 11px/1.1 Barlow,sans-serif;color:var(--muted);padding:0 8px 0 2px;min-width:64px;border-right:1px solid var(--line)}
 #grid.wg td{min-width:44px;text-align:center;padding:5px 2px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;color:#14232B;background:#fbfcfd}
@@ -206,14 +207,29 @@ th.tarde{color:var(--posidonia)}
   </section>
 
   <section class="panel o3" aria-labelledby="h-log">
-    <h2 id="h-log">Registrar inmersión</h2>
-    <p class="note">Anota cómo fue y la visibilidad real. La app compara lo que predijo con lo que encontraste y, a partir de 3 registros en un punto, corrige sola la ola en la orilla y la visibilidad de ese punto.</p>
-    <div class="row"><div><label class="note" for="lg-date">Día</label><input type="date" id="lg-date"></div><div><label class="note" for="lg-hour">Hora</label><input type="number" id="lg-hour" min="6" max="21" value="10"></div></div>
-    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-out">Condiciones</label><select id="lg-out"><option value="0">Fácil</option><option value="1">Con dificultad</option><option value="2">No se pudo / peligrosa</option></select></div><div><label class="note" for="lg-vis">Visibilidad (m)</label><input type="number" id="lg-vis" min="0" max="40" placeholder="opcional"></div></div>
-    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-rech">Rechupe en la orilla</label><select id="lg-rech"><option value="">Sin anotar</option><option value="0">No había</option><option value="1">Algo (molesta)</option><option value="2">Fuerte (cuesta salir)</option></select></div></div>
-    <p style="margin:10px 0 0"><button class="btn" id="lg-save">Guardar registro</button></p>
+    <h2 id="h-log">Logbook I.S.R.</h2>
+    <p class="note">El cuaderno de inmersiones del grupo: todos vemos las de todos. Lo que anotes (condiciones, visibilidad, rechupe) también sirve para que la app afine sus previsiones.</p>
+    <div class="row"><div><label class="note" for="lb-who">Buceador</label><select id="lb-who"></select></div></div>
+    <details class="adv" id="lb-new" style="margin-top:10px"><summary><b>Nueva inmersión</b></summary>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-date">Día</label><input type="date" id="lg-date"></div><div><label class="note" for="lg-hour">Hora de entrada</label><input type="number" id="lg-hour" min="0" max="23" value="10"></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lb-pt">Punto</label><select id="lb-pt"></select></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lb-maxd">Prof. máx. (m)</label><input type="number" id="lb-maxd" min="0" max="120" step="0.1" inputmode="decimal"></div><div><label class="note" for="lb-dur">Tiempo (min)</label><input type="number" id="lb-dur" min="0" max="400" inputmode="numeric"></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-vis">Visibilidad (m)</label><input type="number" id="lg-vis" min="0" max="40" inputmode="numeric"></div><div><label class="note" for="lb-temp">Agua en el fondo (°C)</label><input type="number" id="lb-temp" min="5" max="32" step="0.5" inputmode="decimal"></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-out">Condiciones</label><select id="lg-out"><option value="0">Fácil</option><option value="1">Con dificultad</option><option value="2">No se pudo / peligrosa</option></select></div><div><label class="note" for="lb-cur">Corriente</label><select id="lb-cur"><option value="">Sin anotar</option><option value="0">Nada</option><option value="1">Suave</option><option value="2">Moderada</option><option value="3">Fuerte</option></select></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lg-rech">Rechupe en la orilla</label><select id="lg-rech"><option value="">Sin anotar / barco</option><option value="0">No había</option><option value="1">Algo (molesta)</option><option value="2">Fuerte (cuesta salir)</option></select></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lb-tank">Botella (L)</label><select id="lb-tank"><option value="">—</option><option>10</option><option>12</option><option>15</option><option>18</option><option value="24">Bibotella 2×12</option><option value="30">Bibotella 2×15</option></select></div><div><label class="note" for="lb-gas">Gas</label><select id="lb-gas"><option value="21">Aire</option><option value="32">Nitrox 32</option><option value="36">Nitrox 36</option><option value="o">Otro</option></select></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lb-pin">Presión inicio (bar)</label><input type="number" id="lb-pin" min="0" max="300" inputmode="numeric"></div><div><label class="note" for="lb-pout">Presión final (bar)</label><input type="number" id="lb-pout" min="0" max="300" inputmode="numeric"></div></div>
+    <div style="margin-top:8px"><span class="note">¿Con quién has buceado? (toca para marcar)</span><div id="lb-buddies" class="chips" role="group" aria-label="Compañeros de inmersión"></div></div>
+    <div class="row" style="margin-top:8px"><div><label class="note" for="lb-guide">Guía</label><select id="lb-guide"></select></div></div>
+    <datalist id="lb-names"></datalist>
+    <div style="margin-top:8px"><label class="note" for="lb-notes">Notas (fauna, incidencias…)</label><textarea id="lb-notes" rows="3" style="width:100%;box-sizing:border-box;font:inherit"></textarea></div>
+    <p style="margin:10px 0 0"><button class="btn" id="lg-save">Guardar inmersión</button></p>
+    </details>
     <p class="note" id="lg-msg"></p>
+    <div class="row" style="margin-top:6px"><div><label class="note" for="lb-filt">Ver</label><select id="lb-filt"><option value="all">Todo el grupo</option><option value="me">Solo las mías</option><option value="pt">Solo este punto</option></select></div></div>
+    <div id="lb-stats" class="note" style="margin-top:6px"></div>
     <ul class="log" id="lg-list"></ul>
+    <p><button class="btn ghost" id="lb-more" hidden>Ver más</button></p>
     <p><button class="btn ghost" id="lg-export">Exportar registros</button> <label class="btn ghost" style="display:inline-block">Importar<input type="file" id="lg-import" accept=".json" hidden></label></p>
   </section>
 
@@ -257,7 +273,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-17k"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-25b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1038,21 +1054,66 @@ function detail(D,idx){
 const A_name=()=>aemetData[cur.id]?esc(aemetData[cur.id].nombre)+(aemetData[cur.id].stale?" · última previsión guardada":""):cur.aemet?(AEMET_KEY_BAD?"clave de AEMET caducada":"AEMET no responde ahora"):"sin playa asignada";
 
 // ---------- registro ----------
+// ---------- logbook del grupo: todos ven las de todos; cada dispositivo recuerda quién es ----------
+let lbWho=store.get("calas4-diver",""),lbN=30;
+const LB_GRUPO=["Carlos","Juan Antonio","Juanito","Leo","Oliver"]; // miembros del I.S.R.; los invitados se añaden con «Añadir nombre»
+const lbNames=()=>[...new Set(LB_GRUPO.concat(logs.flatMap(x=>[x.by,...(x.lb&&x.lb.buddies||[]),x.lb&&x.lb.guide])).concat(lbWho).filter(Boolean).map(x=>x.trim()))].sort((a,b)=>(LB_GRUPO.includes(b)-LB_GRUPO.includes(a))||a.localeCompare(b,"es"));
+const ptName=id=>{const p=PUNTOS.find(q=>q.id===id);return p?p.name:id};
+function lbFill(){const n=lbNames();$("lb-who").innerHTML=`<option value="">— Elige tu nombre —</option>`+n.map(x=>`<option${x===lbWho?" selected":""}>${esc(x)}</option>`).join("")+`<option value="+">➕ Añadir nombre…</option>`;
+  $("lb-names").innerHTML=n.map(x=>`<option value="${esc(x)}">`).join("");
+  // compañeros: botones con los nombres del grupo (sin uno mismo), se marcan tocando
+  const on=new Set([...$("lb-buddies").querySelectorAll('button[aria-pressed="true"]')].map(b=>b.dataset.n));
+  $("lb-buddies").innerHTML=n.filter(x=>x!==lbWho).map(x=>`<button type="button" data-n="${esc(x)}" aria-pressed="${on.has(x)}">${esc(x)}</button>`).join("")+`<button type="button" data-n="+" aria-pressed="false">➕ Otro</button>`;
+  $("lb-buddies").querySelectorAll("button").forEach(b=>b.onclick=()=>{if(b.dataset.n==="+"){const v=(prompt("Nombre del compañero:")||"").trim();if(v){const nb=document.createElement("button");nb.type="button";nb.dataset.n=v;nb.textContent=v;nb.setAttribute("aria-pressed","true");nb.onclick=()=>nb.setAttribute("aria-pressed",nb.getAttribute("aria-pressed")!=="true");b.before(nb)}return}b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
+  const gv=$("lb-guide").value;$("lb-guide").innerHTML=`<option value="">Sin guía</option>`+n.map(x=>`<option${x===gv?" selected":""}>${esc(x)}</option>`).join("")+`<option value="+">➕ Otro…</option>`;
+  const pv=$("lb-pt").value||cur.id;$("lb-pt").innerHTML=PUNTOS.map(p=>`<option value="${p.id}"${p.id===pv?" selected":""}>${esc(p.name)}</option>`).join("")}
+$("lb-guide").onchange=()=>{if($("lb-guide").value==="+"){const v=(prompt("Nombre del guía:")||"").trim();const o=document.createElement("option");o.textContent=v;if(v){$("lb-guide").insertBefore(o,$("lb-guide").lastElementChild);$("lb-guide").value=v}else $("lb-guide").value=""}};
+$("lb-who").onchange=()=>{let v=$("lb-who").value;if(v==="+"){v=(prompt("Tu nombre (como te conoce el grupo):")||"").trim()}lbWho=v;store.set("calas4-diver",lbWho);renderLogs()};
+$("lb-filt").onchange=()=>{lbN=30;renderLogs()};$("lb-more").onclick=()=>{lbN+=30;renderLogs()};
+$("lb-new").addEventListener("toggle",()=>{if($("lb-new").open){$("lb-pt").value=cur.id;const D=DATA[cur.id];if(D&&D.sst&&$("lb-temp").value===""){const i=sel??0;const t=D.sst[i];if(t!=null)$("lb-temp").placeholder=`previsto ${Math.round(t)}`}}});
 function renderLogs(){
-  const L=logs.filter(x=>x.cala===cur.id).slice(-8).reverse();
-  $("lg-list").innerHTML=L.map(x=>`<li>${x.date} ${x.hour}:00 · ${["Fácil","Con dificultad","No se pudo"][x.out]}${x.rech!=null?` · rechupe ${["no","algo","fuerte"][x.rech]}`:""}${x.vis!=null?` · ${x.vis} m vis.${x.pred&&x.pred.visEst?` (estimada ${Math.round(x.pred.visEst)})`:""}`:""}${x.pred?(x.pred.hb!=null?` · previsto ${x.pred.hb.toFixed(2)} m orilla`:x.pred.h!=null?` · previsto ${x.pred.h.toFixed(2)} m`:""):" · sin previsión guardada"}</li>`).join("");
+  if(!$("lb-who"))return;lbFill();const f=$("lb-filt").value;
+  let L=logs.slice().sort((a,b)=>(b.date+String(b.hour).padStart(2,"0")).localeCompare(a.date+String(a.hour).padStart(2,"0")));
+  // inmersiones en las que otro te marcó como compañero y aún no has completado con tus datos
+  const mine=logs.filter(x=>lbWho&&x.by===lbWho&&x.lb),linked=new Set(mine.map(x=>x.ref).filter(Boolean));
+  const conmigo=lbWho?logs.filter(x=>x.by!==lbWho&&x.lb&&(x.lb.buddies||[]).includes(lbWho)&&!linked.has(x.id)):[],cmIds=new Set(conmigo.map(x=>x.id));
+  if(f==="me")L=L.filter(x=>lbWho&&(x.by===lbWho||cmIds.has(x.id)));if(f==="pt")L=L.filter(x=>x.cala===cur.id);
+  const nTot=mine.length+conmigo.length;
+  $("lb-stats").textContent=lbWho?`${lbWho}: ${nTot} ${nTot===1?"inmersión registrada":"inmersiones registradas"}`+(mine.length?` · máx. ${Math.max(...mine.map(x=>x.lb.maxd||0))} m · ${String(Math.round(mine.reduce((s,x)=>s+(x.lb.dur||0),0)/60*10)/10).replace(".",",")} h bajo el agua`:""):"Elige tu nombre arriba para registrar inmersiones.";
+  const CUR=["nada","suave","moderada","fuerte"];
+  $("lg-list").innerHTML=L.slice(0,lbN).map(x=>{const b=x.lb||{},p=[];
+    if(b.maxd!=null)p.push(`${b.maxd} m`);if(b.dur!=null)p.push(`${b.dur} min`);if(x.vis!=null)p.push(`vis. ${x.vis} m`);if(b.temp!=null)p.push(`${b.temp} °C`);
+    if(b.cur!=null)p.push(`corriente ${CUR[b.cur]}`);if(x.rech!=null)p.push(`rechupe ${["no","algo","fuerte"][x.rech]}`);
+    const gas=b.gas?(b.gas==="21"?"aire":b.gas==="o"?"otro gas":"EAN"+b.gas):"";let sac="";
+    if(b.tank&&b.pIn&&b.pOut!=null&&b.dur&&b.maxd){const amb=1+b.maxd*0.6/10;sac=` · consumo ~${Math.round((b.pIn-b.pOut)*b.tank/b.dur/amb)} L/min`} // con 60 % de la máxima como profundidad media
+    const eq=b.tank?`${b.tank} L ${gas}${b.pIn?` · ${b.pIn}→${b.pOut??"?"} bar`:""}${sac}`:"";
+    const gente=[b.buddy&&`con ${esc(b.buddy)}`,b.guide&&`guía ${esc(b.guide)}`].filter(Boolean).join(" · ");
+    return `<li><b>${x.date.slice(8)}/${x.date.slice(5,7)}/${x.date.slice(2,4)} ${x.hour}:00 · ${esc(ptName(x.cala))}</b>${x.by?` · ${esc(x.by)}`:""}<br><span class="note">${["Fácil","Con dificultad","No se pudo"][x.out]??""}${p.length?" · "+p.join(" · "):""}${eq?"<br>"+eq:""}${gente?"<br>"+gente:""}${b.notes?"<br>"+esc(b.notes):""}</span>${cmIds.has(x.id)?`<br><span class="note">📝 ${esc(x.by)} te ha apuntado en esta inmersión.</span> <button type="button" class="btn ghost lb-add" data-id="${x.id}" style="padding:3px 10px;font-size:12px">Añadir mis datos</button>`:""}${x.ref?`<br><span class="note">↔ misma inmersión que ${esc((logs.find(y=>y.id===x.ref)||{}).by||"otro buceador")}</span>`:""}</li>`}).join("")||`<li class="note">Aún no hay inmersiones registradas.</li>`;
+  $("lb-more").hidden=L.length<=lbN;
+  $("lg-list").querySelectorAll(".lb-add").forEach(bt=>bt.onclick=()=>lbCompletar(bt.dataset.id));
 }
-$("lg-date").value=new Date().toLocaleDateString("sv-SE");
+// rellena el formulario con lo común de la inmersión de un compañero: solo falta lo tuyo (profundidad, tiempo, botella, presiones)
+function lbCompletar(id){const x=logs.find(y=>y.id===id);if(!x)return;const b=x.lb||{};window._lbRef=id;$("lb-new").open=true;
+  $("lb-pt").value=x.cala;$("lg-date").value=x.date;$("lg-hour").value=x.hour;$("lg-out").value=x.out??0;$("lg-vis").value=x.vis??"";$("lb-temp").value=b.temp??"";$("lb-cur").value=b.cur??"";$("lg-rech").value=x.rech??"";
+  const quienes=[x.by,...(b.buddies||[])].filter(n=>n&&n!==lbWho);$("lb-buddies").querySelectorAll("button").forEach(bt=>bt.setAttribute("aria-pressed",String(quienes.includes(bt.dataset.n))));
+  quienes.filter(n=>!$("lb-buddies").querySelector(`button[data-n="${CSS.escape(n)}"]`)).forEach(n=>{const nb=document.createElement("button");nb.type="button";nb.dataset.n=n;nb.textContent=n;nb.setAttribute("aria-pressed","true");nb.onclick=()=>nb.setAttribute("aria-pressed",nb.getAttribute("aria-pressed")!=="true");$("lb-buddies").lastElementChild.before(nb)});
+  if(b.guide){if(![...$("lb-guide").options].some(o=>o.value===b.guide)){const o=document.createElement("option");o.textContent=b.guide;$("lb-guide").insertBefore(o,$("lb-guide").lastElementChild)}$("lb-guide").value=b.guide}
+  $("lg-msg").textContent=`Datos de la inmersión de ${x.by} copiados: añade tu profundidad, tiempo, botella y presiones, y guarda.`;$("lb-new").scrollIntoView({behavior:"smooth",block:"start"})}
+$("lg-date").value=new Date().toLocaleDateString("sv-SE");try{renderLogs()}catch(e){}
 $("lg-save").onclick=()=>{
-  const date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=$("lg-vis").value===""?null:+$("lg-vis").value,rech=$("lg-rech").value===""?null:+$("lg-rech").value;
-  const D=DATA[cur.id];let pred=null;
+  if(!lbWho){$("lg-msg").textContent="Elige primero tu nombre en «Buceador».";return}
+  const num=id=>$(id).value===""?null:+$(id).value,txt=id=>$(id).value.trim()||null;
+  const cala=$("lb-pt").value||cur.id,date=$("lg-date").value,hour=+$("lg-hour").value,out=+$("lg-out").value,vis=num("lg-vis"),rech=$("lg-rech").value===""?null:+$("lg-rech").value;
+  const P=PUNTOS.find(p=>p.id===cala)||cur,D=DATA[cala];let pred=null;
   if(D){let best=-1,bd=1e9;D.times.forEach((t,i)=>{if(t.slice(0,10)===date){const d=Math.abs(+t.slice(11,13)-hour);if(d<bd){bd=d;best=i}}});
-    if(best>=0&&bd<=3){const K=learnedK(cur.id).k,r=evalAt(cur,best,0);if(r){const ve=visEstim(cur,D,best);pred={h:r.bl.h,he:r.bl.he!=null?r.bl.he/K:null,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null,r2:r.rch?r.rch.r2:null}}}}
-  const entry={id:newId(),cala:cur.id,date,hour,out,vis,rech,pred};
+    if(best>=0&&bd<=3){const K=learnedK(cala).k,r=evalAt(P,best,0);if(r){const ve=visEstim(P,D,best);pred={h:r.bl.h,he:r.bl.he!=null?r.bl.he/K:null,hb:r.ref.hb!=null?r.ref.hb:null,wl:r.we.l,m:r.ref.m,visEst:ve?ve.raw:null,r2:r.rch?r.rch.r2:null}}}}
+  const lb={maxd:num("lb-maxd"),dur:num("lb-dur"),temp:num("lb-temp"),cur:$("lb-cur").value===""?null:+$("lb-cur").value,tank:num("lb-tank"),gas:$("lb-gas").value,pIn:num("lb-pin"),pOut:num("lb-pout"),buddies:[...$("lb-buddies").querySelectorAll('button[aria-pressed="true"]')].map(b=>b.dataset.n),buddy:[...$("lb-buddies").querySelectorAll('button[aria-pressed="true"]')].map(b=>b.dataset.n).join(", ")||null,guide:$("lb-guide").value&&$("lb-guide").value!=="+"?$("lb-guide").value:null,notes:txt("lb-notes")};
+  const ref=window._lbRef||null;window._lbRef=null;const entry={id:newId(),by:lbWho,cala,date,hour,out,vis,rech,pred:ref?null:pred,lb,ref}; // la copia de un compañero no cuenta dos veces para el ajuste
   logs.push(entry);store.set("calas3-logs",logs);
   srv("/logs",{method:"POST",body:JSON.stringify(entry)}).catch(async()=>{pending.push(entry);store.set("calas3-pending",pending);render();if(!serverOK)await pedirPin()});
-  $("lg-msg").textContent=pred?"Registro guardado con la previsión de ese momento.":"Registro guardado. No había previsión para esa fecha (solo hasta 3 días atrás), así que no cuenta para el ajuste.";
-  render();
+  ["lb-maxd","lb-dur","lg-vis","lb-temp","lb-pin","lb-pout","lb-notes"].forEach(id=>$(id).value="");$("lb-buddies").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed","false"));$("lb-guide").value="";$("lb-new").open=false;
+  $("lg-msg").textContent="Inmersión guardada en el logbook del grupo."+(pred?"":" (Sin previsión de ese momento: no cuenta para el ajuste.)");
+  renderLogs();render();
 };
 $("lg-export").onclick=()=>{const b=new Blob([JSON.stringify({puntos:PUNTOS,logs},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="registros-inmersiones.json";a.click()};
 $("lg-import").onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(Array.isArray(j.logs)){j.logs.forEach(x=>{if(!x.id)x.id=newId();if(!logs.some(l=>l.id===x.id)){logs.push(x);pending.push(x)}});store.set("calas3-logs",logs);store.set("calas3-pending",pending);flushPending()}$("lg-msg").textContent=`Importados. Total: ${logs.length} registros.`;render()}catch(err){$("lg-msg").textContent="El archivo no es un export válido de esta app."}};
