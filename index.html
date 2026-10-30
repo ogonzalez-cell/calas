@@ -273,7 +273,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-30a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-30b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -569,7 +569,7 @@ async function loadSat(p){
   // hasta ~7 km mar adentro: con nubes o bruma junto a la costa, el satélite a veces solo ve agua más afuera
   const cands=[[p.lat,p.lon],[p.lat+off[0],p.lon+off[1]],[p.lat+2*off[0],p.lon+2*off[1]],[p.lat+3.5*off[0],p.lon+3.5*off[1]],[p.lat+5*off[0],p.lon+5*off[1]]],KM=[0,1,3,5,7];
   const hoy=new Date();let diario=null;
-  for(let d=1;d<=10&&!diario;d++){ // una imagen sigue aportando hasta ~10 díasconst t=new Date(hoy);t.setDate(t.getDate()-d);const ts=t.toISOString().slice(0,10)+"T00:00:00Z";
+  for(let d=1;d<=10&&!diario;d++){/* una imagen sigue aportando hasta ~10 días */const t=new Date(hoy);t.setDate(t.getDate()-d);const ts=t.toISOString().slice(0,10)+"T00:00:00Z";
     const vals=await Promise.all(cands.flatMap(([a,b])=>[kdAt(KD_L3+"olci-300m_P1D_202207/KD490",a,b,ts),kdAt(KD_L3+"multi-1km_P1D_202207/KD490",a,b,ts)]));
     const ix=vals.findIndex(x=>x!=null);if(ix>=0)diario={kd:vals[ix],fecha:ts.slice(0,10),km:KM[ix>>1]>=3?KM[ix>>1]:0}}
   let mes=null;for(let k=1;k<=3&&!mes;k++){const t=new Date(hoy.getFullYear(),hoy.getMonth()-k,1);const ts=t.toLocaleDateString("sv-SE").slice(0,8)+"01T00:00:00Z";
