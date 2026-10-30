@@ -273,7 +273,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-10-27a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-10-30a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -569,7 +569,7 @@ async function loadSat(p){
   // hasta ~7 km mar adentro: con nubes o bruma junto a la costa, el satélite a veces solo ve agua más afuera
   const cands=[[p.lat,p.lon],[p.lat+off[0],p.lon+off[1]],[p.lat+2*off[0],p.lon+2*off[1]],[p.lat+3.5*off[0],p.lon+3.5*off[1]],[p.lat+5*off[0],p.lon+5*off[1]]],KM=[0,1,3,5,7];
   const hoy=new Date();let diario=null;
-  for(let d=1;d<=7&&!diario;d++){const t=new Date(hoy);t.setDate(t.getDate()-d);const ts=t.toISOString().slice(0,10)+"T00:00:00Z";
+  for(let d=1;d<=10&&!diario;d++){ // una imagen sigue aportando hasta ~10 díasconst t=new Date(hoy);t.setDate(t.getDate()-d);const ts=t.toISOString().slice(0,10)+"T00:00:00Z";
     const vals=await Promise.all(cands.flatMap(([a,b])=>[kdAt(KD_L3+"olci-300m_P1D_202207/KD490",a,b,ts),kdAt(KD_L3+"multi-1km_P1D_202207/KD490",a,b,ts)]));
     const ix=vals.findIndex(x=>x!=null);if(ix>=0)diario={kd:vals[ix],fecha:ts.slice(0,10),km:KM[ix>>1]>=3?KM[ix>>1]:0}}
   let mes=null;for(let k=1;k<=3&&!mes;k++){const t=new Date(hoy.getFullYear(),hoy.getMonth()-k,1);const ts=t.toLocaleDateString("sv-SE").slice(0,8)+"01T00:00:00Z";
@@ -588,10 +588,22 @@ async function loadSat(p){
   return {diario,mes,modelo,hr};
 }
 function pt2(deg,dist){const a=deg*Math.PI/180;return [dist*Math.cos(a),dist*Math.sin(a)/Math.cos(41.8*Math.PI/180)]}
+// ---------- normal de cada mes por cala: turbidez (KD490) media de oct-2023 a oct-2026 en el satélite, a 3-5 km de la costa ----------
+// la época del año explica ~70 % de la turbidez: en invierno el agua es casi el doble de turbia que en verano
+const CLIM={sfg:[.062,.060,.064,.043,.036,.029,.025,.026,.027,.036,.051,.051],tossa:[.061,.060,.063,.043,.036,.030,.026,.027,.028,.034,.049,.049],
+  begur:[.060,.058,.063,.050,.043,.033,.027,.027,.029,.038,.058,.058],blanes:[.057,.058,.062,.043,.037,.031,.027,.027,.028,.037,.047,.049],
+  vedell:[.061,.060,.071,.046,.040,.030,.026,.027,.027,.037,.055,.053]};
+CLIM.boreas=CLIM.vedell;CLIM.ullastres=CLIM.begur; // puntos de barco: la cala analizada más cercana
+const climDe=pid=>CLIM[pid]||CLIM.sfg.map((_,m)=>Object.keys(CLIM).reduce((s,k)=>s+CLIM[k][m],0)/Object.keys(CLIM).length);
+const climMes=(pid,fecha)=>climDe(pid)[+fecha.slice(5,7)-1];
+const climMed=pid=>{const v=climDe(pid).slice().sort((a,b)=>a-b);return (v[5]+v[6])/2};
+const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+// peso de una imagen de satélite según su edad, medido en 3 años: lo que se parece el agua a la de días antes (1 d 0,67 · 3 d 0,48 · 7 d 0,26 · 14 d ~0)
+const pesoEdad=edad=>Math.min(0.7,0.7*Math.exp(-Math.max(0,edad-1)/6));
 function satFactor(pid,dayIdx){
-  const s=SAT[pid];if(!s||!s.diario||!s.mes)return null;
-  const raw=Math.max(0.5,Math.min(1.3,Math.pow(s.mes.kd/s.diario.kd,0.7)));
-  const edad=Math.round((Date.now()-new Date(s.diario.fecha))/864e5)+dayIdx;const w=Math.max(0,1-Math.max(0,edad-1)/5); // pierde peso con los días
+  const s=SAT[pid];if(!s||!s.diario)return null;const ref=climMes(pid,s.diario.fecha); // se compara con lo normal en ese mes, no con el mes anterior
+  const raw=Math.max(0.5,Math.min(1.3,Math.pow(ref/s.diario.kd,0.7)));
+  const edad=Math.round((Date.now()-new Date(s.diario.fecha))/864e5)+dayIdx;const w=pesoEdad(edad);
   return {f:1+(raw-1)*w,raw,s};
 }
 function hrFactor(pid,dayIdx){
@@ -656,7 +668,7 @@ function visK(pid){
 }
 function modelFactor(pid,date){
   const s=SAT[pid];const kd=s&&s.modelo&&s.modelo[date];if(!kd)return null;
-  return {f:Math.max(0.6,Math.min(1.15,Math.pow(0.032/kd,0.7))),kd};
+  return {f:Math.max(0.6,Math.min(1.25,Math.pow(climMes(pid,date)/kd,0.7))),kd}; // solo la diferencia con lo normal del mes: la época ya va en fE
 }
 function visEstim(p,D,i,dayIdx=0){
   const W=refSerie(D);if(!W)return null;
@@ -672,15 +684,17 @@ function visEstim(p,D,i,dayIdx=0){
   const fC=calma&&R<2?1.1:1;
   const sf0=satFactor(p.id,dayIdx),hf=hrFactor(p.id,dayIdx),useHR=!!hf&&(!sf0||hf.s.hr.fecha>=sf0.s.diario.fecha),sf=useHR?null:sf0,fS=useHR?hf.f:(sf?sf.f:1),mf=modelFactor(p.id,D.times[i].slice(0,10)),fM=mf?mf.f:1;
   const rf=riverFactor(p,D.times[i].slice(0,10)),fRio=rf?rf.f:1;
-  const K=visK(p.id).k,est=visBase(p)*fR*fW*fV*fC*fS*fM*fRio*K,v=Math.max(1,Math.min(30,est));
+  const mesI=D.times[i].slice(0,10),fE=Math.max(0.6,Math.min(1.4,Math.pow(climMed(p.id)/climMes(p.id,mesI),0.7))); // época del año
+  const K=visK(p.id).k,est=visBase(p)*fE*fR*fW*fV*fC*fS*fM*fRio*K,v=Math.max(1,Math.min(30,est));
   const why=[];
+  if(fE<0.92)why.push(`en ${MESES[+mesI.slice(5,7)-1]} el agua suele estar más turbia que la media del año`);else if(fE>1.08)why.push(`en ${MESES[+mesI.slice(5,7)-1]} el agua suele estar más limpia que la media del año`);
   if(R>=3)why.push(`${Math.round(R)} mm de lluvia en los últimos días`);
   if(fW<0.9)why.push(`mar removida (${hmax.toFixed(1)} m${playa?" dentro de la cala":""} en las últimas 24 h)`);
   if(fV<1)why.push("viento entrando a la cala");
   if(fC>1)why.push("dos días de calma sin lluvia");
   if(rf)why.push(...rf.why);
   if(useHR)why.push(`Sentinel-2 a 100 m (${hf.s.hr.fecha.slice(8)}/${hf.s.hr.fecha.slice(5,7)}): ${Math.abs(hf.raw-1)<0.08?"turbidez normal en la cala":hf.raw<1?"agua de la cala más turbia que su media":"agua de la cala más clara que su media"}`);
-  if(sf&&Math.abs(sf.raw-1)>=0.08)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}${sf.s.diario.km?`, a ~${sf.s.diario.km} km mar adentro`:""}): agua ${sf.raw<1?"más turbia":"más clara"} que la media del mes`);
+  if(sf&&Math.abs(sf.raw-1)>=0.08)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}${sf.s.diario.km?`, a ~${sf.s.diario.km} km mar adentro`:""}): agua ${sf.raw<1?"más turbia":"más clara"} de lo normal en ${MESES[+sf.s.diario.fecha.slice(5,7)-1]}`);
   else if(sf)why.push(`satélite (${sf.s.diario.fecha.slice(8)}/${sf.s.diario.fecha.slice(5,7)}${sf.s.diario.km?`, a ~${sf.s.diario.km} km mar adentro`:""}): transparencia normal`);
   if(mf)why.push(mf.f<0.95?`el modelo de Copernicus prevé agua de fondo más turbia (kd ${mf.kd.toFixed(3)})`:mf.f>1.05?`el modelo de Copernicus prevé agua de fondo muy limpia (kd ${mf.kd.toFixed(3)})`:`agua de fondo limpia según el modelo de Copernicus`);
   const vr=Math.round(v);return {v,cat:vr>=12?0:vr>=6?1:2,txt:vr>=12?"buena":vr>=6?"media":"mala",why,raw:est/K};
@@ -770,7 +784,7 @@ function wxDia(D,date){if(!D.wx)return null;const hs=[];D.times.forEach((t,i)=>{
 // Ola en mar abierto: un valor si los modelos coinciden; el rango min–máx si discrepan (≥0,3 m de diferencia)
 const lvOpenOr=r=>r.bl.he!=null?lvOpen(r.bl.he):(r.bl.h>th.bwarn?2:r.bl.h>th.bgo?1:0);
 const mrango=b=>b.max-b.min>=0.3?`${b.min.toFixed(1)}–${b.max.toFixed(1)}`:b.h.toFixed(1);
-// Barra de turbidez (KD490): la raya negra es la media del mes; cada punto es verde si el agua está más limpia que la media y rojo si está más turbia
+// Barra de turbidez (KD490): la raya negra es lo normal en ese mes (3 años de satélite); cada punto es verde si el agua está más limpia que la media y rojo si está más turbia
 function kdBar(mean,vals){if(!vals.length)return "";const mx=Math.max(mean*2,...vals.map(o=>o.v))*1.1,pos=v=>Math.min(97,Math.max(3,v/mx*100));
   // degradado anclado en la media: verde intenso (muy limpia) → amarillo justo en la media → rojo intenso (muy turbia)
   const m=pos(mean),ST=[[0,[31,138,85]],[m*0.6,[110,180,90]],[m,[232,212,77]],[m+(100-m)*0.45,[224,140,38]],[100,[201,65,47]]];
@@ -778,7 +792,7 @@ function kdBar(mean,vals){if(!vals.length)return "";const mx=Math.max(mean*2,...
   const dk=c=>c.replace(/\d+/g,x=>Math.round(x*0.72)),grad=`linear-gradient(90deg,${ST.map(([p,c])=>`rgb(${c.join(",")}) ${p.toFixed(1)}%`).join(",")})`;
   // cada punto con su forma y su letra: círculo S = satélite (dato medido), rombo P = previsión del modelo
   const it=vals.map(o=>{const p=pos(o.v),c=col(p),sat=o.k==="s";return {...o,p,c,sat,txt:`${Math.abs(Math.round((o.v/mean-1)*100))} % ${o.v>mean?"más turbia":"más limpia"}`}});
-  return `<div class="kdbar" role="img" aria-label="Turbidez frente a la media del mes: ${it.map(o=>`${o.l}, ${o.txt}`).join("; ")}"><div class="kdtrack" style="background:${grad}"></div><div class="kdmean" style="left:${m.toFixed(1)}%"><span>media ${mean.toFixed(3)}</span></div>${it.map(o=>`<div class="kdpt ${o.sat?"sat":"prev"}" style="left:${o.p.toFixed(1)}%;background:${o.c}"><b>${o.sat?"S":"P"}</b></div>`).join("")}</div>
+  return `<div class="kdbar" role="img" aria-label="Turbidez frente a lo normal del mes: ${it.map(o=>`${o.l}, ${o.txt}`).join("; ")}"><div class="kdtrack" style="background:${grad}"></div><div class="kdmean" style="left:${m.toFixed(1)}%"><span>normal ${mean.toFixed(3)}</span></div>${it.map(o=>`<div class="kdpt ${o.sat?"sat":"prev"}" style="left:${o.p.toFixed(1)}%;background:${o.c}"><b>${o.sat?"S":"P"}</b></div>`).join("")}</div>
   <div class="kdleg"><span>← agua más limpia</span><span>más turbia →</span></div>
   <div class="kdlist">${it.map(o=>`<div><i class="kdpt ${o.sat?"sat":"prev"} mini" style="background:${o.c}"><b>${o.sat?"S":"P"}</b></i>${o.l}: <b style="color:${dk(o.c)}">${o.v.toFixed(3)}</b> · <span style="color:${dk(o.c)}">${o.txt}</span></div>`).join("")}</div>`}
 // ---------- cala en 3D: relieve real del modelo topobatimétrico del ICGC (LiDAR y sonda 2022-2024), malla de 41x41 puntos cada 4 m ----------
@@ -1046,7 +1060,7 @@ function detail(D,idx){
    ${(()=>{const w=D.wx?wxInfo(D.wx.code[i],D.wx.day[i]):null;return w?`<dt>Tiempo</dt><dd>${w.i} ${w.t}${D.wx.temp[i]!=null?` · ${Math.round(D.wx.temp[i])} °C`:""}</dd>`:""})()}
    <dt>Temperatura del agua</dt><dd>${D.sst[i]!=null?D.sst[i].toFixed(1)+" °C":"–"}</dd>
    <dt>Lluvia 48 h previas</dt><dd>${Math.round(r48)} mm</dd>
-   ${(()=>{const ve=visEstim(cur,D,i,day);if(!ve)return "";const S=SAT[cur.id];const K=visK(cur.id);return `<dt>Visibilidad estimada</dt><dd><strong>~${Math.round(ve.v)} m</strong> (${ve.txt})${ve.why.length?" · "+esc(ve.why.join(", ")):""}${K.n>=3?` · ajustada con ${K.n} registros`:""}</dd>${S?`<dt>Copernicus</dt><dd>${S.diario?`KD490 ${S.diario.kd.toFixed(3)} m⁻¹ el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`:"sin dato reciente (nubes)"}${S.mes?` · media ${S.mes.mes.slice(5)}/${S.mes.mes.slice(0,4)}: ${S.mes.kd.toFixed(3)}`:""}${S.modelo&&S.modelo[date]?` · previsión del modelo para este día: ${S.modelo[date].toFixed(3)}`:""}${S.mes?kdBar(S.mes.kd,[S.diario?{v:S.diario.kd,k:"s",l:`Satélite (medido el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)})`}:null,S.modelo&&S.modelo[date]?{v:S.modelo[date],k:"p",l:"Previsión del modelo para este día"}:null].filter(Boolean)):""}</dd>`:""}`})()}
+   ${(()=>{const ve=visEstim(cur,D,i,day);if(!ve)return "";const S=SAT[cur.id];const K=visK(cur.id);return `<dt>Visibilidad estimada</dt><dd><strong>~${Math.round(ve.v)} m</strong> (${ve.txt})${ve.why.length?" · "+esc(ve.why.join(", ")):""}${K.n>=3?` · ajustada con ${K.n} registros`:""}</dd>${S?`<dt>Copernicus</dt><dd>${S.diario?`KD490 ${S.diario.kd.toFixed(3)} m⁻¹ el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)}`:"sin dato reciente (nubes)"}${` · normal en ${MESES[+date.slice(5,7)-1]}: ${climMes(cur.id,date).toFixed(3)}`}${S.modelo&&S.modelo[date]?` · previsión del modelo para este día: ${S.modelo[date].toFixed(3)}`:""}${kdBar(climMes(cur.id,date),[S.diario?{v:S.diario.kd,k:"s",l:`Satélite (medido el ${S.diario.fecha.slice(8)}/${S.diario.fecha.slice(5,7)})`}:null,S.modelo&&S.modelo[date]?{v:S.modelo[date],k:"p",l:"Previsión del modelo para este día"}:null].filter(Boolean))}</dd>`:""}`})()}
    <dt>Acuerdo entre modelos</dt><dd><strong>${r.agree} de ${r.n}</strong> · confianza ${Math.round(r.conf*100)} %</dd>
   </dl>
   <ul class="reasons">${r.why.map(([l,t])=>`<li style="color:${["var(--go)","#A97A00","var(--stop)"][l]}">${t}</li>`).join("")}${a&&a.lv!=null&&a.lv>r.lv?`<li>AEMET da oleaje ${esc(a.txt)} para esta franja.</li>`:""}</ul>
