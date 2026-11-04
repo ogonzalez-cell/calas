@@ -176,12 +176,19 @@ th.tarde{color:var(--posidonia)}
 .pl-warn{color:var(--stop,#c0392b);font-weight:600}
 .pl-ok{color:var(--go,#1f8a55);font-weight:600}
 .pl-kpi{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}.pl-kpi div{border:1px solid var(--line);border-radius:10px;padding:6px 10px;min-width:96px}.pl-kpi b{display:block;font:700 20px "Barlow Condensed",sans-serif}
+.vsw{display:inline-flex;gap:4px;background:rgba(255,255,255,.08);border-radius:10px;padding:3px;margin:6px 0 8px}
+.vsw button{font:600 15px "Barlow Condensed",sans-serif;background:transparent;color:#A9C2C6;border:0;padding:7px 14px;border-radius:8px;cursor:pointer}
+.vsw button[aria-selected="true"]{background:var(--foam);color:var(--ink)}
+body.plan main,body.plan header .tabs,body.plan header .pick,body.plan header .sub{display:none!important}
+#planView{max-width:1150px;margin:0 auto;padding:18px 20px 40px}
+@media (max-width:860px){#planView{padding:12px 8px 30px}}
 </style>
 </head>
 <body>
 <header>
   <h1>¿Se puede bucear hoy?</h1>
   <p class="sub">Referencia ECMWF (el modelo por defecto de Windy), contrastada con otros 4 modelos y con AEMET, y ajustada con tus inmersiones.</p>
+  <div class="vsw" role="tablist" aria-label="Sección"><button type="button" role="tab" id="v-prev" aria-selected="true">🌊 Previsión</button><button type="button" role="tab" id="v-plan" aria-selected="false">🧮 Planificador</button></div>
   <div class="tabs" role="tablist" id="tabs"></div>
   <label class="pick" for="psel"><span>¿Dónde vas a bucear?</span><select id="psel"></select></label>
 </header>
@@ -286,9 +293,12 @@ th.tarde{color:var(--posidonia)}
     <div class="detail" id="detail"></div>
   </section>
 
+ </div>
+</main>
+<div id="planView" hidden>
   <section class="panel" id="pPlan" aria-labelledby="h-plan">
-    <details id="plan-det">
-      <summary><h2 id="h-plan" style="display:inline;margin:0">Planificador de inmersión · deco y gas</h2></summary>
+    <div id="plan-det">
+      <h2 id="h-plan" style="margin:0 0 4px">Planificador de inmersión · deco y gas</h2>
       <p class="note">Bühlmann ZH-L16C con gradient factors (el mismo cálculo que el Mares Quad 2). Herramienta de planificación: bajo el agua manda tu ordenador, y la deco y el trimix requieren la formación correspondiente.</p>
       <h3 class="pl-h">Niveles <span class="note">(profundidad y minutos; el tiempo del primer nivel cuenta desde que empiezas a bajar)</span></h3>
       <div id="pl-lv"></div>
@@ -314,12 +324,11 @@ th.tarde{color:var(--posidonia)}
         <p class="note">Presets de GF: <button type="button" class="btn ghost pl-gfp" data-g="30,70">30/70</button> <button type="button" class="btn ghost pl-gfp" data-g="30,85">30/85</button> <button type="button" class="btn ghost pl-gfp" data-g="40,85">40/85</button> <button type="button" class="btn ghost pl-gfp" data-g="50,80">50/80</button></p>
       </details>
       <div id="pl-out" style="margin-top:12px"></div>
-    </details>
+    </div>
   </section>
- </div>
-</main>
+</div>
 <script>
-const APP_VERSION="2026-11-05d"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-05e"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1404,7 +1413,10 @@ function planInit(){
     else if(t.classList.contains("pl-gfp")){const [a,b]=t.dataset.g.split(",").map(Number);PL.gfl=a;PL.gfh=b;planForms();planRender()}});
   $("pl-addlv").onclick=()=>{const l=PL.lv[PL.lv.length-1];PL.lv.push({d:Math.max(6,(l?l.d:20)-10),t:10});planForms();planRender()};
   $("pl-addcy").onclick=()=>{PL.cy.push({tipo:"s80",v:11.1,p:207,o2:100,he:0,rol:"deco",lim:0,cambio:0,baja:0});planForms();planRender()};
-  $("plan-det").addEventListener("toggle",()=>{if($("plan-det").open)planRender()});
+  // pestaña independiente: Previsión | Planificador (se recuerda con #plan en la dirección)
+  const vista=v=>{const p=v==="plan";document.body.classList.toggle("plan",p);$("planView").hidden=!p;$("v-plan").setAttribute("aria-selected",p);$("v-prev").setAttribute("aria-selected",!p);
+    if(p){planRender();if(location.hash!=="#plan")history.replaceState(null,"","#plan")}else if(location.hash==="#plan")history.replaceState(null,"",location.pathname+location.search);window.scrollTo(0,0)};
+  $("v-plan").onclick=()=>vista("plan");$("v-prev").onclick=()=>vista("prev");if(location.hash==="#plan")vista("plan");
 }
 try{planInit()}catch(e){console.error("planificador",e)}
 
