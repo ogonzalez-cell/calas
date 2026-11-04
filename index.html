@@ -274,7 +274,7 @@ th.tarde{color:var(--posidonia)}
  </div>
 </main>
 <script>
-const APP_VERSION="2026-11-03a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-05a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -813,13 +813,16 @@ async function grid3dLive(d,id){const key="calas4-g3d-"+id+"-"+d.c.join()+"-"+d.
 // ---------- webcams más cercanas y representativas de cada punto ----------
 const WEBCAMS={
   sfg:[{n:"Club Nàutic Sant Feliu",u:"https://cnsfg.cat/meteo-webcam/",d:"en el puerto, junto a Port Salvi"},{n:"Más cámaras cerca",u:"https://www.windfinder.com/webcams/platja_d_aro"}],
-  tossa:[{n:"Tossa 360°",u:"https://www.skylinewebcams.com/webcam/espana/cataluna/gerona/tossa-de-mar.html",d:"gira por la bahía; Mar Menuda queda al norte"},{n:"Más cámaras cerca",u:"https://www.windfinder.com/webcams/tossa_de_mar"}],
+  tossa:[{n:"Mar Menuda en directo",u:"https://www.hotelreymartossa.com/es/webcam-tossa-de-mar",emb:"https://g0.ipcamlive.com/player/player.php?alias=645df42b35714",d:"cámara del Gran Hotel Reymar, frente a la playa"},{n:"Tossa 360°",u:"https://www.skylinewebcams.com/webcam/espana/cataluna/gerona/tossa-de-mar.html"}],
   begur:[{n:"Aiguablava y Tamariu",u:"https://www.windfinder.com/webcams/aiguablava",d:"2-5 km al sur, misma costa"}],
   blanes:[{n:"Club de Vela Blanes",u:"https://www.windfinder.com/webcams/blanes",d:"en la punta de Santa Anna"}],
   vedell:[{n:"Port de Palamós",u:"https://www.windy.com/webcams/1575445569",d:"a ~1 km"},{n:"Más cámaras cerca",u:"https://www.windfinder.com/webcams/palamos"}],
   boreas:[{n:"Port de Palamós",u:"https://www.windy.com/webcams/1575445569",d:"a ~2 km"},{n:"Más cámaras cerca",u:"https://www.windfinder.com/webcams/palamos"}],
   ullastres:[{n:"Calella de Palafrugell – Les Planes",u:"https://www.skylinewebcams.com/es/webcam/espana/cataluna/gerona/calella-de-palafrugell-costa-brava.html",d:"mira al mar hacia los Ullastres"},{n:"Llafranc y Tamariu",u:"https://www.windfinder.com/webcams/tamariu"}]};
-function renderCams(){const b=$("camsbox"),b2=$("camsbox2");const L=WEBCAMS[cur.id]||[];const h=L.length?`<p class="note" style="margin:8px 0 0">📷 <b>Webcam:</b> `+L.map(c=>`<a href="${c.u}" target="_blank" rel="noopener">${esc(c.n)}</a>${c.d?` (${esc(c.d)})`:""}`).join(" · ")+`</p>`:"";if(b)b.innerHTML=h;if(b2)b2.innerHTML=h}
+function renderCams(){const b=$("camsbox");if(!b)return;const L=WEBCAMS[cur.id]||[];
+  b.innerHTML=L.length?`<p class="note" style="margin:8px 0 0">📷 <b>Webcam:</b> `+L.map((c,k)=>`<a href="${c.u}" target="_blank" rel="noopener">${esc(c.n)}</a>${c.d?` (${esc(c.d)})`:""}${c.emb?` <button type="button" class="btn ghost camplay" data-k="${k}" style="padding:2px 10px;font-size:12px">▶ Ver aquí</button>`:""}`).join(" · ")+`</p><div id="camview"></div>`:"";
+  // la imagen en directo solo se carga si se pide (es vídeo y gasta datos)
+  b.querySelectorAll(".camplay").forEach(bt=>bt.onclick=()=>{const c=L[+bt.dataset.k];$("camview").innerHTML=`<div style="margin-top:8px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#000"><iframe title="${esc(c.n)}" src="${c.emb}" style="width:100%;height:100%;border:0" allow="autoplay; fullscreen" allowfullscreen></iframe></div><p class="note" style="margin:4px 0 0">Imagen en directo cortesía de <a href="${c.u}" target="_blank" rel="noopener">Gran Hotel Reymar</a>.</p>`;bt.remove()})}
 async function abrir3D(){
   if(V3&&V3.ren){try{V3.ren.dispose();V3.ren.forceContextLoss()}catch(e){}} // libera el visor anterior al cambiar de cala
   renderCams();const d=CALA3D[cur.id],box=$("v3dbox");if(!d){box.innerHTML='<p class="note" style="padding:10px">Aún no hay modelo 3D de esta cala.</p>';V3=null;return}
