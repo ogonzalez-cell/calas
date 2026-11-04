@@ -327,7 +327,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-05f"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-05g"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1310,7 +1310,7 @@ const CNS_T=[[0.6,720],[0.7,570],[0.8,450],[0.9,360],[1.0,300],[1.1,240],[1.2,21
 const cnsLim=pp=>{if(pp<=0.5)return Infinity;if(pp>1.6)return 15;for(let k=1;k<CNS_T.length;k++)if(pp<=CNS_T[k][0]){const [a,ta]=CNS_T[k-1],[b,tb]=CNS_T[k];return pp<a?ta:ta+(tb-ta)*(pp-a)/(b-a)}return 45};
 function planCalc(P,gfl,gfh){
   const C=P.cy.map(c=>({...c,used:0}));const T=tisNew();let rt=0,d=0,cur=-1,cns=0,otu=0,ppMax=0,endMax=0;
-  const ev=[],segs=[],warn=new Set(),stops=[];
+  const ev=[],segs=[],warn=new Set(),stops=[],samp=[];
   const bar=i=>C[i].p-C[i].used/C[i].v;
   const backGas=()=>{for(let i=0;i<C.length;i++)if(C[i].rol==="stage"&&bar(i)>C[i].lim+0.05)return i;let f=C.findIndex(c=>c.rol==="fondo");if(f<0)f=C.findIndex(c=>c.rol!=="deco");return f<0?0:f};
   function pick(dep,fase){
@@ -1319,14 +1319,14 @@ function planCalc(P,gfl,gfh){
     return backGas()}
   function step(d0,d1,t,fase){if(t<=1e-9)return;const n=Math.max(1,Math.ceil(t/0.1)),h=t/n;
     for(let k=0;k<n;k++){const a=d0+(d1-d0)*k/n,b=d0+(d1-d0)*(k+1)/n,m=(a+b)/2;const g=pick(fase==="baja0"&&d1>d0?a:b,fase);
-      if(g!==cur){if(cur>=0)ev.push({rt,d:fase==="deco"?b:a,txt:C[cur].rol==="stage"&&bar(cur)<=C[cur].lim+0.05?`${cyName(C[cur])} a ${C[cur].lim} bar → cambio a ${cyName(C[g])}`:`Cambio a ${cyName(C[g])}`});cur=g}
+      if(g!==cur){if(cur>=0)ev.push({rt,d:fase==="deco"?b:a,pf:bar(cur),pt:bar(g),g,txt:C[cur].rol==="stage"&&bar(cur)<=C[cur].lim+0.05?`${cyName(C[cur])} a ${C[cur].lim} bar → cambio a ${cyName(C[g])}`:`Cambio a ${cyName(C[g])}`});cur=g}
       const c=C[g];tisSeg(T,a,b,h,c.o2/100,c.he/100);c.used+=P.sac*pAmb(m)*h;
       const pp=c.o2/100*pAmb(m);ppMax=Math.max(ppMax,pp);cns+=h/cnsLim(pp)*100;if(pp>0.5)otu+=h*Math.pow((pp-0.5)/0.5,0.83);
       const lim=fase==="deco"?P.ppd:Math.max(P.ppb,c.rol==="deco"?P.ppd:0);if(pp>lim+0.02)warn.add(`ppO₂ ${pp.toFixed(2)} con ${gasName(c)} a ${Math.round(m)} m (máx. ${lim})`);
       if(pp<0.16)warn.add(`${gasName(c)} es hipóxico a ${Math.round(m)} m (ppO₂ ${pp.toFixed(2)})`);
       const end=(m+10)*(1-c.he/100)-10;endMax=Math.max(endMax,end);
       const s=segs[segs.length-1];if(s&&s.g===g&&Math.abs(s.d1-a)<1e-6&&((s.d1-s.d0)*(b-a)>=0)&&Math.abs((s.d1-s.d0)/(s.t1-s.t0)-(b-a)/h)<1e-6)Object.assign(s,{t1:rt+h,d1:b});else segs.push({t0:rt,t1:rt+h,d0:a,d1:b,g});
-      rt+=h}}
+      rt+=h;samp.push({t:rt,g,b:bar(g)})}}
   const move=(d0,d1,fase)=>step(d0,d1,Math.abs(d1-d0)/(d1>d0?P.vd:P.va),fase);
   let tEnd=0,maxD=0;
   P.lv.forEach((L,i)=>{const D=Math.max(0,+L.d||0);tEnd+=Math.max(0,+L.t||0);maxD=Math.max(maxD,D);
@@ -1343,11 +1343,11 @@ function planCalc(P,gfl,gfh){
   if(fs>0){while(d>P.last&&tisCeil(T,gfl)<=d-3){move(d,d-3,"deco");d-=3}}
   const first=Math.max(d,1e-9),gfAt=x=>gfh+(gfl-gfh)*x/first;
   while(d>0){const n=fs===0?0:(d>P.last?d-3:0);let m=0;
-    while(tisCeil(T,gfAt(n))>n+1e-9&&m<600){step(d,d,1,"deco");m++}
-    if(m)stops.push({d,m,rt,g:cur});
+    const bI=cur>=0?bar(cur):0;while(tisCeil(T,gfAt(n))>n+1e-9&&m<600){step(d,d,1,"deco");m++}
+    if(m)stops.push({d,m,rt,g:cur,bI,bF:bar(cur)});
     move(d,n,"deco");d=n}
   const deco=stops.reduce((s,x)=>s+x.m,0);
-  return {C,rt,tFondo,ev,segs,stops,deco,tts:rt-tFondo,cns,otu,ppMax,endMax,maxD,warn:[...warn],first:fs?first:0}}
+  return {C,rt,tFondo,ev,segs,stops,samp,deco,tts:rt-tFondo,cns,otu,ppMax,endMax,maxD,warn:[...warn],first:fs?first:0}}
 function reservaFondo(P,R){ // presión de reserva de la botella de fondo según la regla elegida
   const i=R.C.findIndex(c=>c.rol==="fondo");if(i<0)return null;const c=R.C[i];
   if(P.res==="tercios")return {i,bar:c.p/3,txt:"tercios"};
@@ -1370,11 +1370,14 @@ function planRender(){
   R.ev.forEach(e=>svg+=`<circle cx="${X(e.rt)}" cy="${Y(e.d)}" r="4" fill="#fff" stroke="#0E2A3A" stroke-width="1.5"/>`);
   svg+=`</svg><p class="note">${R.C.map((c,i)=>`<span style="color:${COL[i%COL.length]}">■</span> ${esc(cyName(c))}`).join(" · ")} · ○ cambio de gas</p>`;
   // tabla de la inmersión: niveles, cambios y paradas
-  const rows=[];let tAcc=0;PL.lv.forEach((L,i)=>{tAcc+=+L.t||0;rows.push({rt:tAcc,txt:`Fin del nivel ${i+1}: ${L.d} m`})});
-  R.ev.forEach(e=>rows.push({rt:e.rt,txt:`🔄 ${e.txt} (a ${Math.round(e.d)} m)`,ev:1}));
-  R.stops.forEach(s=>rows.push({rt:s.rt,txt:`Parada ${s.d} m · <b>${s.m} min</b> · ${esc(gasName(R.C[s.g]))}`}));
-  rows.push({rt:R.rt,txt:"Superficie"});rows.sort((a,b)=>a.rt-b.rt);
-  const tab=`<table class="pl-tab"><tr><th>Minuto</th><th>Qué</th></tr>${rows.map(r=>`<tr${r.ev?' class="pl-ev"':""}><td>${fmin(r.rt)}</td><td>${r.txt}</td></tr>`).join("")}</table>`;
+  // botella en uso y su presión en cada momento de la tabla
+  const enT=t=>{let s=null;for(const x of R.samp){if(x.t<=t+1e-6)s=x;else break}return s};
+  const pr=(g,b)=>`${esc(cyName(R.C[g]))} · <b>${Math.max(0,Math.round(b))} bar</b>`;
+  const rows=[];let tAcc=0;PL.lv.forEach((L,i)=>{tAcc+=+L.t||0;const s=enT(tAcc);rows.push({rt:tAcc,txt:`Fin del nivel ${i+1}: ${L.d} m`,bo:s?pr(s.g,s.b):""})});
+  R.ev.forEach(e=>rows.push({rt:e.rt,txt:`🔄 ${e.txt} (a ${Math.round(e.d)} m)`,ev:1,bo:`${Math.max(0,Math.round(e.pf))} bar → ${pr(e.g,e.pt)}`}));
+  R.stops.forEach(s=>rows.push({rt:s.rt,txt:`Parada ${s.d} m · <b>${s.m} min</b> · ${esc(gasName(R.C[s.g]))}`,bo:`${esc(cyName(R.C[s.g]))} · ${Math.round(s.bI)} → <b>${Math.max(0,Math.round(s.bF))} bar</b>`}));
+  {const s=enT(R.rt);rows.push({rt:R.rt,txt:"Superficie",bo:s?pr(s.g,s.b):""})}rows.sort((a,b)=>a.rt-b.rt);
+  const tab=`<table class="pl-tab"><tr><th>Minuto</th><th>Qué</th><th>Botella en uso · presión</th></tr>${rows.map(r=>`<tr${r.ev?' class="pl-ev"':""}><td>${fmin(r.rt)}</td><td>${r.txt}</td><td>${r.bo||""}</td></tr>`).join("")}</table>`;
   // gas por botella
   const gas=`<table class="pl-tab"><tr><th>Botella</th><th>Usado</th><th>Presión</th><th>Margen</th></tr>${R.C.map((c,i)=>{const fin=c.p-c.used/c.v;let lim=0,lt="";
       if(c.rol==="stage"){lim=c.lim;lt=`dejar a ${c.lim} bar`}else if(c.rol==="deco"){lim=c.p/3;lt="reserva 1/3"}else if(rs&&rs.i===i){lim=rs.bar;lt=`reserva ${Math.round(rs.bar)} bar (${rs.txt})`}
