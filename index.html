@@ -319,6 +319,8 @@ body.plan main,body.plan header .sub{display:none!important}
           <label>Consumo superficie (L/min) <input type="number" id="pl-sac" min="8" max="40"></label>
           <label>Reserva botella de fondo <select id="pl-res"><option value="tercios">Tercios</option><option value="rb">Rock bottom (2 buceadores)</option><option value="fijo">Presión mínima fija</option></select></label>
           <label>Presión mínima (bar) <input type="number" id="pl-resf" min="0" max="150"></label>
+          <label>Agua <select id="pl-agua"><option value="salada">Salada (1,03 · como el Quad 2 en SALT)</option><option value="dulce">Dulce</option><option value="en13319">EN13319 (1,02)</option></select></label>
+          <label>Tiempo de cambio de gas <select id="pl-tcam"><option value="0">0 min</option><option value="1">1 min</option></select></label>
         </div>
         <p class="note">Presets de GF: <button type="button" class="btn ghost pl-gfp" data-g="30,70">30/70</button> <button type="button" class="btn ghost pl-gfp" data-g="30,85">30/85</button> <button type="button" class="btn ghost pl-gfp" data-g="40,85">40/85</button> <button type="button" class="btn ghost pl-gfp" data-g="50,80">50/80</button></p>
       </details>
@@ -327,7 +329,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-05g"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1290,25 +1292,28 @@ const ZH={n2t:[5,8,12.5,18.5,27,38.3,54.3,77,109,146,187,239,305,390,498,635],
   het:[1.88,3.02,4.72,6.99,10.21,14.48,20.53,29.11,41.2,55.19,70.69,90.34,115.29,147.42,188.24,240.03],
   hea:[1.6189,1.383,1.1919,1.0458,.922,.8205,.7305,.6502,.595,.5545,.5333,.5189,.5181,.5176,.5172,.5119],
   heb:[.477,.5747,.6527,.7223,.7582,.7957,.8279,.8553,.8757,.8903,.8997,.9073,.9122,.9171,.9217,.9267]};
-const PSUP=1.01325,PH2O=0.0627,pAmb=d=>PSUP+d/10;
+const PSUP=1.01325,PH2O=0.0627;let PL_BAR=0.10101;const pAmb=d=>PSUP+d*PL_BAR; // bar por metro: salada 1,03 kg/L (como el Quad 2 en SALT), dulce 1,00, EN13319 1,0197
 const tisNew=()=>({n2:Array(16).fill((PSUP-PH2O)*0.7902),he:Array(16).fill(0)});
 const tisCopy=T=>({n2:T.n2.slice(),he:T.he.slice()});
 function tisSeg(T,d0,d1,t,fo2,fhe){ // ecuación de Schreiner: cambio de profundidad lineal
-  if(t<=0)return;const p0=pAmb(d0)-PH2O,R=(d1-d0)/10/t,fn2=1-fo2-fhe;
+  if(t<=0)return;const p0=pAmb(d0)-PH2O,R=(d1-d0)*PL_BAR/t,fn2=1-fo2-fhe;
   for(let i=0;i<16;i++){for(const [arr,ht,f] of [[T.n2,ZH.n2t,fn2],[T.he,ZH.het,fhe]]){if(f<=0&&arr[i]===0)continue;const k=Math.LN2/ht[i],pi=p0*f,r=R*f;arr[i]=pi+r*(t-1/k)-(pi-arr[i]-r/k)*Math.exp(-k*t)}}}
-function tisCeil(T,gf){let m=0;for(let i=0;i<16;i++){const p=T.n2[i]+T.he[i];const a=p>0?(ZH.n2a[i]*T.n2[i]+ZH.hea[i]*T.he[i])/p:ZH.n2a[i],b=p>0?(ZH.n2b[i]*T.n2[i]+ZH.heb[i]*T.he[i])/p:ZH.n2b[i];m=Math.max(m,(p-a*gf)/(gf/b-gf+1))}return Math.max(0,(m-PSUP)*10)}
+function tisCeil(T,gf){let m=0;for(let i=0;i<16;i++){const p=T.n2[i]+T.he[i];const a=p>0?(ZH.n2a[i]*T.n2[i]+ZH.hea[i]*T.he[i])/p:ZH.n2a[i],b=p>0?(ZH.n2b[i]*T.n2[i]+ZH.heb[i]*T.he[i])/p:ZH.n2b[i];m=Math.max(m,(p-a*gf)/(gf/b-gf+1))}return Math.max(0,(m-PSUP)/PL_BAR)}
+const PL_COL=["#1f6fb2","#d6336c","#e08a1e","#2a9d55","#7d3cb5","#00838f"]; // un color por botella, igual en la lista y en la gráfica
 const CYLT={mono15:["Monobotella 15 L",15,200],mono18:["Monobotella 18 L",18,200],bi10:["Bibotella 2×10 L",20,200],bi12:["Bibotella 2×12 L",24,200],s80:["Stage S80 (11,1 L)",11.1,207],s40:["Stage S40 (5,7 L)",5.7,207],otra:["Otra",10,200]};
-const PL_DEF={gfl:30,gfh:85,agfl:50,agfh:90,vd:18,va:9,last:3,ppb:1.4,ppd:1.6,sac:20,res:"tercios",resf:50,
+const PL_DEF={gfl:30,gfh:85,agfl:50,agfh:90,vd:18,va:9,last:3,ppb:1.4,ppd:1.6,sac:20,res:"tercios",resf:50,agua:"salada",tcam:0,
   lv:[{d:40,t:25}],
   cy:[{tipo:"bi12",v:24,p:200,o2:21,he:0,rol:"fondo",lim:0,cambio:0,baja:0},{tipo:"s80",v:11.1,p:207,o2:21,he:0,rol:"stage",lim:40,cambio:0,baja:0},{tipo:"s80",v:11.1,p:207,o2:50,he:0,rol:"deco",lim:0,cambio:0,baja:21}]};
 let PL=(()=>{try{const s=store.get("calas4-plan",null);return s&&s.cy&&s.lv?{...PL_DEF,...s}:JSON.parse(JSON.stringify(PL_DEF))}catch(e){return JSON.parse(JSON.stringify(PL_DEF))}})();
 const gasName=c=>c.he>0?`Trimix ${c.o2}/${c.he}`:c.o2===21?"Aire":c.o2>=99?"Oxígeno":`EAN${c.o2}`;
 const cyName=(c,i)=>`${CYLT[c.tipo]?CYLT[c.tipo][0].replace(/ \(.*\)/,""):"Botella"} ${gasName(c)}`;
-const modDe=(c,pp)=>Math.max(0,(pp/(c.o2/100)-PSUP)*10);
+const modDe=(c,pp)=>Math.max(0,(pp/(c.o2/100)-PSUP)/PL_BAR);
 const cambioDe=(c,P)=>c.cambio>0?c.cambio:Math.floor(modDe(c,P.ppd)/3)*3; // profundidad de cambio a un gas de deco
 const CNS_T=[[0.6,720],[0.7,570],[0.8,450],[0.9,360],[1.0,300],[1.1,240],[1.2,210],[1.3,180],[1.4,150],[1.5,120],[1.6,45]];
 const cnsLim=pp=>{if(pp<=0.5)return Infinity;if(pp>1.6)return 15;for(let k=1;k<CNS_T.length;k++)if(pp<=CNS_T[k][0]){const [a,ta]=CNS_T[k-1],[b,tb]=CNS_T[k];return pp<a?ta:ta+(tb-ta)*(pp-a)/(b-a)}return 45};
+const AGUA={salada:0.10101,dulce:0.098067,en13319:0.1};
 function planCalc(P,gfl,gfh){
+  PL_BAR=AGUA[P.agua]||AGUA.salada;
   const C=P.cy.map(c=>({...c,used:0}));const T=tisNew();let rt=0,d=0,cur=-1,cns=0,otu=0,ppMax=0,endMax=0;
   const ev=[],segs=[],warn=new Set(),stops=[],samp=[];
   const bar=i=>C[i].p-C[i].used/C[i].v;
@@ -1327,7 +1332,7 @@ function planCalc(P,gfl,gfh){
       const end=(m+10)*(1-c.he/100)-10;endMax=Math.max(endMax,end);
       const s=segs[segs.length-1];if(s&&s.g===g&&Math.abs(s.d1-a)<1e-6&&((s.d1-s.d0)*(b-a)>=0)&&Math.abs((s.d1-s.d0)/(s.t1-s.t0)-(b-a)/h)<1e-6)Object.assign(s,{t1:rt+h,d1:b});else segs.push({t0:rt,t1:rt+h,d0:a,d1:b,g});
       rt+=h;samp.push({t:rt,g,b:bar(g)})}}
-  const move=(d0,d1,fase)=>step(d0,d1,Math.abs(d1-d0)/(d1>d0?P.vd:P.va),fase);
+  const move=(d0,d1,fase)=>{const g0=cur;step(d0,d1,Math.abs(d1-d0)/(d1>d0?P.vd:P.va),fase);if(fase==="deco"&&cur!==g0&&g0>=0&&(+P.tcam||0)>0)step(d1,d1,+P.tcam,"deco")}; // tiempo para el cambio de gas (opcional)
   let tEnd=0,maxD=0;
   P.lv.forEach((L,i)=>{const D=Math.max(0,+L.d||0);tEnd+=Math.max(0,+L.t||0);maxD=Math.max(maxD,D);
     if(D<d){const ce=tisCeil(T,gfl);if(ce>D+0.5)warn.add(`No puedes subir al nivel ${i+1} (${D} m): el techo de deco está a ${Math.ceil(ce)} m`)}
@@ -1359,7 +1364,7 @@ function planRender(){
   try{store.set("calas4-plan",PL)}catch(e){}
   const out=$("pl-out");if(!out)return;let R;try{R=planCalc(PL,PL.gfl/100,PL.gfh/100)}catch(e){out.innerHTML=`<p class="pl-warn">Error en el cálculo: ${esc(e.message)}</p>`;return}
   let A=null;try{A=planCalc(PL,PL.agfl/100,PL.agfh/100)}catch(e){}
-  const rs=reservaFondo(PL,R),COL=["#1f6fb2","#c0392b","#e08a1e","#2a9d55","#7d3cb5","#555"];
+  const rs=reservaFondo(PL,R),COL=PL_COL;
   const kpi=`<div class="pl-kpi"><div>Duración total<b>${Math.round(R.rt)} min</b></div><div>Fondo<b>${Math.round(R.tFondo)} min</b></div><div>Subida (TTS)<b>${Math.round(R.tts)} min</b></div><div>Paradas<b>${R.deco} min</b></div><div>CNS<b>${Math.round(R.cns)} %</b></div><div>OTU<b>${Math.round(R.otu)}</b></div><div>END máx.<b>${Math.round(R.endMax)} m</b></div></div>`;
   // gráfico del perfil
   const W=640,H=200,mx=Math.max(1,R.rt),my=Math.max(10,R.maxD),X=t=>30+t/mx*(W-40),Y=dd=>10+dd/my*(H-30);
@@ -1394,21 +1399,21 @@ function planRender(){
 function planForms(){
   const lv=$("pl-lv"),cy=$("pl-cy");if(!lv)return;
   lv.innerHTML=PL.lv.map((L,i)=>`<div class="pl-row"><b style="align-self:center">${i+1}</b><label>Profundidad (m)<input class="w1" type="number" min="1" max="150" data-lv="${i}" data-k="d" value="${L.d}"></label><label>Minutos<input class="w1" type="number" min="1" max="300" data-lv="${i}" data-k="t" value="${L.t}"></label>${PL.lv.length>1?`<button type="button" class="pl-x" data-dlv="${i}" aria-label="Quitar nivel">✕</button>`:""}</div>`).join("");
-  cy.innerHTML=PL.cy.map((c,i)=>`<div class="pl-row"><label>Botella<select class="w2" data-cy="${i}" data-k="tipo">${Object.entries(CYLT).map(([k,v])=>`<option value="${k}"${c.tipo===k?" selected":""}>${v[0]}</option>`).join("")}</select></label>
+  cy.innerHTML=PL.cy.map((c,i)=>`<div class="pl-row" style="border-left:6px solid ${PL_COL[i%PL_COL.length]}"><span style="align-self:center;width:14px;height:14px;border-radius:3px;background:${PL_COL[i%PL_COL.length]}" title="Color de esta botella en la gráfica"></span><label>Botella<select class="w2" data-cy="${i}" data-k="tipo">${Object.entries(CYLT).map(([k,v])=>`<option value="${k}"${c.tipo===k?" selected":""}>${v[0]}</option>`).join("")}</select></label>
     <label>Litros<input class="w1" type="number" step="0.1" data-cy="${i}" data-k="v" value="${c.v}"></label><label>Bar<input class="w1" type="number" data-cy="${i}" data-k="p" value="${c.p}"></label>
     <label>O₂ %<input class="w1" type="number" min="5" max="100" data-cy="${i}" data-k="o2" value="${c.o2}"></label><label>He %<input class="w1" type="number" min="0" max="95" data-cy="${i}" data-k="he" value="${c.he}"></label>
     <label>Uso<select class="w3" data-cy="${i}" data-k="rol"><option value="fondo"${c.rol==="fondo"?" selected":""}>Fondo</option><option value="stage"${c.rol==="stage"?" selected":""}>Stage (se usa primero)</option><option value="deco"${c.rol==="deco"?" selected":""}>Deco</option></select></label>
     ${c.rol==="stage"?`<label>Dejarla a (bar)<input class="w1" type="number" data-cy="${i}" data-k="lim" value="${c.lim}"></label>`:""}
     ${c.rol==="deco"?`<label>Cambio a (m)<input class="w1" type="number" data-cy="${i}" data-k="cambio" value="${c.cambio||""}" placeholder="${Math.floor(modDe(c,PL.ppd)/3)*3}"></label><label>Bajar con ella hasta (m)<input class="w1" type="number" data-cy="${i}" data-k="baja" value="${c.baja||""}" placeholder="no"></label>`:""}
     <span class="note" style="align-self:center">${gasName(c)} · MOD ${Math.floor(modDe(c,c.rol==="deco"?PL.ppd:PL.ppb))} m</span>${PL.cy.length>1?`<button type="button" class="pl-x" data-dcy="${i}" aria-label="Quitar botella">✕</button>`:""}</div>`).join("");
-  ["gfl","gfh","agfl","agfh","vd","va","last","ppb","ppd","sac","res","resf"].forEach(k=>{const el=$("pl-"+k);if(el)el.value=PL[k]});
+  ["gfl","gfh","agfl","agfh","vd","va","last","ppb","ppd","sac","res","resf","agua","tcam"].forEach(k=>{const el=$("pl-"+k);if(el)el.value=PL[k]});
 }
 function planInit(){
   if(!$("pPlan"))return;planForms();
   $("pPlan").addEventListener("change",e=>{const t=e.target;
     if(t.dataset.lv!=null){PL.lv[+t.dataset.lv][t.dataset.k]=+t.value}
     else if(t.dataset.cy!=null){const c=PL.cy[+t.dataset.cy],k=t.dataset.k;if(k==="tipo"||k==="rol"){c[k]=t.value;if(k==="tipo"&&CYLT[t.value]){c.v=CYLT[t.value][1];c.p=CYLT[t.value][2]}if(k==="rol"&&t.value==="stage"&&!c.lim)c.lim=40}else c[k]=+t.value||0;planForms()}
-    else if(t.id&&t.id.startsWith("pl-")){const k=t.id.slice(3);if(k in PL)PL[k]=k==="res"?t.value:+t.value;planForms()}
+    else if(t.id&&t.id.startsWith("pl-")){const k=t.id.slice(3);if(k in PL)PL[k]=k==="res"||k==="agua"?t.value:+t.value;planForms()}
     planRender()});
   $("pPlan").addEventListener("click",e=>{const t=e.target;
     if(t.dataset.dlv!=null){PL.lv.splice(+t.dataset.dlv,1);planForms();planRender()}
@@ -1426,4 +1431,3 @@ try{planInit()}catch(e){console.error("planificador",e)}
 </script>
 </body>
 </html>
-
