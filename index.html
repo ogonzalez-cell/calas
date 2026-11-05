@@ -298,11 +298,11 @@ body.plan main,body.plan header .sub{display:none!important}
   <section class="panel" id="pPlan" aria-labelledby="h-plan">
     <div id="plan-det">
       <h2 id="h-plan" style="margin:0 0 4px">Planificador de inmersión · deco y gas</h2>
-      <p class="note">Bühlmann ZH-L16C con gradient factors (el mismo cálculo que el Mares Quad 2). Herramienta de planificación: bajo el agua manda tu ordenador, y la deco y el trimix requieren la formación correspondiente.</p>
+      <p class="note">Bühlmann ZH-L16C con gradient factors. Herramienta de planificación: bajo el agua manda tu ordenador, y la deco y el trimix requieren la formación correspondiente.</p>
       <div class="pl-row" style="align-items:end"><label style="flex:1;min-width:180px">Título del plan<input id="pl-tit" type="text" maxlength="80" placeholder="p. ej. Haven hélice multinivel"></label><button type="button" class="btn" id="pl-save">💾 Guardar</button><button type="button" class="btn ghost" id="pl-new">Nuevo plan</button><button type="button" class="btn ghost" id="pl-sinc">🔄 Sincronizar</button></div>
       <p class="note" id="pl-msg" style="margin:4px 0"></p><p class="note" id="pl-sync" style="margin:0 0 4px"></p>
       <details class="adv" id="pl-savedd"><summary>Planes del grupo (<span id="pl-n">0</span>)</summary><div id="pl-saved" style="margin-top:6px"></div></details>
-      <h3 class="pl-h">Niveles <span class="note">(el primer nivel cuenta desde que empiezas a bajar; en los demás, los minutos son en ese nivel, sin contar el desplazamiento, como en Deco Planner)</span></h3>
+      <h3 class="pl-h">Niveles <span class="note">(el primer nivel cuenta desde que empiezas a bajar; en los demás, los minutos son en ese nivel, sin contar el desplazamiento)</span></h3>
       <div id="pl-lv"></div>
       <p><button type="button" class="btn ghost" id="pl-addlv">➕ Añadir nivel</button></p>
       <h3 class="pl-h">Botellas</h3>
@@ -322,7 +322,7 @@ body.plan main,body.plan header .sub{display:none!important}
           <label>Consumo superficie (L/min) <input type="number" id="pl-sac" min="8" max="40"></label>
           <label>Reserva botella de fondo <select id="pl-res"><option value="tercios">Tercios</option><option value="rb">Rock bottom (2 buceadores)</option><option value="fijo">Presión mínima fija</option></select></label>
           <label>Presión mínima (bar) <input type="number" id="pl-resf" min="0" max="150"></label>
-          <label>Agua <select id="pl-agua"><option value="salada">Salada (1,03 · como el Quad 2 en SALT)</option><option value="dulce">Dulce</option><option value="en13319">EN13319 (1,02)</option></select></label>
+          <label>Agua <select id="pl-agua"><option value="salada">Salada (1,03)</option><option value="dulce">Dulce</option><option value="en13319">EN13319 (1,02)</option></select></label>
           <label>Tiempo de cambio de gas <select id="pl-tcam"><option value="0">0 min</option><option value="1">1 min</option></select></label>
         </div>
         <p class="note">Presets de GF: <button type="button" class="btn ghost pl-gfp" data-g="30,70">30/70</button> <button type="button" class="btn ghost pl-gfp" data-g="30,85">30/85</button> <button type="button" class="btn ghost pl-gfp" data-g="40,85">40/85</button> <button type="button" class="btn ghost pl-gfp" data-g="50,80">50/80</button></p>
@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06i"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06j"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1296,7 +1296,7 @@ const ZH={n2t:[5,8,12.5,18.5,27,38.3,54.3,77,109,146,187,239,305,390,498,635],
   het:[1.88,3.02,4.72,6.99,10.21,14.48,20.53,29.11,41.2,55.19,70.69,90.34,115.29,147.42,188.24,240.03],
   hea:[1.6189,1.383,1.1919,1.0458,.922,.8205,.7305,.6502,.595,.5545,.5333,.5189,.5181,.5176,.5172,.5119],
   heb:[.477,.5747,.6527,.7223,.7582,.7957,.8279,.8553,.8757,.8903,.8997,.9073,.9122,.9171,.9217,.9267]};
-const PSUP=1.01325,PH2O=0.0627;let PL_BAR=0.10101;const pAmb=d=>PSUP+d*PL_BAR; // bar por metro: salada 1,03 kg/L (como el Quad 2 en SALT), dulce 1,00, EN13319 1,0197
+const PSUP=1.01325,PH2O=0.0627;let PL_BAR=0.10101;const pAmb=d=>PSUP+d*PL_BAR; // bar por metro: salada 1,03 kg/L (SALT), dulce 1,00, EN13319 1,0197
 const tisNew=()=>({n2:Array(16).fill((PSUP-PH2O)*0.7902),he:Array(16).fill(0)});
 const tisCopy=T=>({n2:T.n2.slice(),he:T.he.slice()});
 function tisSeg(T,d0,d1,t,fo2,fhe){ // ecuación de Schreiner: cambio de profundidad lineal
@@ -1344,7 +1344,7 @@ function planCalc(P,gfl,gfh){
     if(i===0){const bj=Math.max(0,...C.filter(c=>c.baja).map(c=>cambioDe(c,P)));if(bj>0&&bj<D){move(0,bj,"baja0");d=bj}} // el cambio del gas de bajada, justo a su profundidad
     move(d,D,i===0?"baja0":"fondo");d=D;
     if(i===0&&rt>(+L.t||0)+0.05)warn.add(`El primer nivel es más corto que la bajada (${rt.toFixed(1)} min)`);
-    // como Deco Planner: el primer nivel cuenta desde que empiezas a bajar; los demás son minutos EN ese nivel, sin el desplazamiento
+    // el primer nivel cuenta desde que empiezas a bajar; los demás son minutos EN ese nivel, sin el desplazamiento
     tEnd=i===0?Math.max(0,+L.t||0):rt+Math.max(0,+L.t||0);
     step(D,D,tEnd-rt,"fondo");lvEnd.push(rt)});
   const tFondo=rt;
@@ -1399,7 +1399,7 @@ function planRender(){
       const ok=fin>=lim-0.5;return `<tr><td>${esc(cyName(c))}</td><td>${Math.round(c.used)} L · ${Math.round(c.used/c.v)} bar</td><td>${c.p} → <b>${Math.round(fin)} bar</b></td><td class="${ok?"pl-ok":"pl-warn"}">${ok?"✓":"⚠️"} ${lt}</td></tr>`}).join("")}</table>`;
   const W2=R.warn.slice();R.C.forEach((c,i)=>{const fin=c.p-c.used/c.v;if(fin<0)W2.push(`${cyName(c)}: no tiene gas suficiente (faltan ${Math.round(-fin*c.v)} L)`)});
   if(R.endMax>30)W2.push(`Profundidad narcótica equivalente de ${Math.round(R.endMax)} m: valora un trimix`);if(R.cns>80)W2.push(`CNS ${Math.round(R.cns)} %: exposición al oxígeno alta`);
-  const alt=A&&A.rt<R.rt-0.5?`<p class="note">Con el GF alternativo ${PL.agfl}/${PL.agfh} (como el ALT GF del Quad 2, para una emergencia) la subida sería de ${Math.round(A.tts)} min en vez de ${Math.round(R.tts)}.</p>`:"";
+  const alt=A&&A.rt<R.rt-0.5?`<p class="note">Con el GF alternativo ${PL.agfl}/${PL.agfh} (para una emergencia) la subida sería de ${Math.round(A.tts)} min en vez de ${Math.round(R.tts)}.</p>`:"";
   // Ratio Deco: solo como referencia y dentro de sus rangos
   const fondo=R.C.find(c=>c.rol==="fondo"),e50=R.C.some(c=>c.rol==="deco"&&c.o2===50),avg=R.segs.filter(s=>s.t1<=R.tFondo+1e-6).reduce((s,x)=>s+(x.t1-x.t0)*(x.d0+x.d1)/2,0)/Math.max(1e-6,R.tFondo);
   const tb=R.tFondo-(PL.lv[0]?(+PL.lv[0].d||0)/PL.vd:0);
