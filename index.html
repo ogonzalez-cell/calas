@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06f"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06g"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1372,7 +1372,10 @@ function planRender(){
   const out=$("pl-out");if(!out)return;let R;try{R=planCalc(PL,PL.gfl/100,PL.gfh/100)}catch(e){out.innerHTML=`<p class="pl-warn">Error en el cálculo: ${esc(e.message)}</p>`;return}
   let A=null;try{A=planCalc(PL,PL.agfl/100,PL.agfh/100)}catch(e){}
   const rs=reservaFondo(PL,R),COL=PL_COL;
-  const kpi=`<div class="pl-kpi"><div>Duración total<b>${Math.round(R.rt)} min</b></div><div>Fondo<b>${Math.round(R.tFondo)} min</b></div><div>Subida (TTS)<b>${Math.round(R.tts)} min</b></div><div>Paradas<b>${R.deco} min</b></div><div>CNS<b>${Math.round(R.cns)} %</b></div><div>OTU<b>${Math.round(R.otu)}</b></div><div>END máx.<b>${Math.round(R.endMax)} m</b></div></div>`;
+  // profundidad media: del fondo (desde que empiezas a bajar hasta que empieza la subida final) y de toda la inmersión
+  const pmed=(t1)=>{let a=0,t=0;R.segs.forEach(x=>{const b=Math.min(x.t1,t1);if(b>x.t0){const f=(b-x.t0)/(x.t1-x.t0),dB=x.d0+(x.d1-x.d0)*f;a+=(b-x.t0)*(x.d0+dB)/2;t+=b-x.t0}});return t>0?a/t:0};
+  const pmF=pmed(R.tFondo),pmT=pmed(R.rt);R.pmF=pmF;R.pmT=pmT;
+  const kpi=`<div class="pl-kpi"><div>Duración total<b>${Math.round(R.rt)} min</b></div><div>Fondo<b>${Math.round(R.tFondo)} min</b></div><div>Prof. media fondo<b>${pmF.toFixed(1).replace(".",",")} m</b></div><div>Prof. media total<b>${pmT.toFixed(1).replace(".",",")} m</b></div><div>Subida (TTS)<b>${Math.round(R.tts)} min</b></div><div>Paradas<b>${R.deco} min</b></div><div>CNS<b>${Math.round(R.cns)} %</b></div><div>OTU<b>${Math.round(R.otu)}</b></div><div>END máx.<b>${Math.round(R.endMax)} m</b></div></div>`;
   // gráfico del perfil
   const W=640,H=200,mx=Math.max(1,R.rt),my=Math.max(10,R.maxD),X=t=>30+t/mx*(W-40),Y=dd=>10+dd/my*(H-30);
   let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block" role="img" aria-label="Perfil de la inmersión planificada">`;
