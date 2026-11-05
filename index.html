@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06j"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06k"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1336,7 +1336,7 @@ function planCalc(P,gfl,gfh){
       if(pp<0.16)warn.add(`${gasName(c)} es hipóxico a ${Math.round(m)} m (ppO₂ ${pp.toFixed(2)})`);
       const end=(m+10)*(1-c.he/100)-10;endMax=Math.max(endMax,end);
       const s=segs[segs.length-1];if(s&&s.g===g&&Math.abs(s.d1-a)<1e-6&&((s.d1-s.d0)*(b-a)>=0)&&Math.abs((s.d1-s.d0)/(s.t1-s.t0)-(b-a)/h)<1e-6)Object.assign(s,{t1:rt+h,d1:b});else segs.push({t0:rt,t1:rt+h,d0:a,d1:b,g});
-      rt+=h;samp.push({t:rt,g,b:bar(g)})}}
+      rt+=h;samp.push({t:rt,g,b:bar(g),d:b,pp:pp,T:tisCopy(T)})}}
   const move=(d0,d1,fase)=>{const g0=cur;step(d0,d1,Math.abs(d1-d0)/(d1>d0?P.vd:P.va),fase);if(fase==="deco"&&cur!==g0&&g0>=0&&(+P.tcam||0)>0)step(d1,d1,+P.tcam,"deco")}; // tiempo para el cambio de gas (opcional)
   let tEnd=0,maxD=0;
   const lvEnd=[];P.lv.forEach((L,i)=>{const D=Math.max(0,+L.d||0);maxD=Math.max(maxD,D);
@@ -1359,7 +1359,7 @@ function planCalc(P,gfl,gfh){
     if(m)stops.push({d,m,rt,g:cur,bI,bF:bar(cur)});
     move(d,n,"deco");d=n}
   const deco=stops.reduce((s,x)=>s+x.m,0);
-  return {C,rt,tFondo,ev,segs,stops,samp,lvEnd,deco,tts:rt-tFondo,cns,otu,ppMax,endMax,maxD,warn:[...warn],first:fs?first:0}}
+  return {C,rt,tFondo,ev,segs,stops,samp,lvEnd,gfl,gfh,deco,tts:rt-tFondo,cns,otu,ppMax,endMax,maxD,warn:[...warn],first:fs?first:0}}
 function reservaFondo(P,R){ // presión de reserva de la botella de fondo según la regla elegida
   const i=R.C.findIndex(c=>c.rol==="fondo");if(i<0)return null;const c=R.C[i];
   if(P.res==="tercios")return {i,bar:c.p/3,txt:"tercios"};
@@ -1378,12 +1378,12 @@ function planRender(){
   const kpi=`<div class="pl-kpi"><div>Duración total<b>${Math.round(R.rt)} min</b></div><div>Fondo<b>${Math.round(R.tFondo)} min</b></div><div>Prof. media fondo<b>${pmF.toFixed(1).replace(".",",")} m</b></div><div>Prof. media total<b>${pmT.toFixed(1).replace(".",",")} m</b></div><div>Subida (TTS)<b>${Math.round(R.tts)} min</b></div><div>Paradas<b>${R.deco} min</b></div><div>CNS<b>${Math.round(R.cns)} %</b></div><div>OTU<b>${Math.round(R.otu)}</b></div><div>END máx.<b>${Math.round(R.endMax)} m</b></div></div>`;
   // gráfico del perfil
   const W=640,H=200,mx=Math.max(1,R.rt),my=Math.max(10,R.maxD),X=t=>30+t/mx*(W-40),Y=dd=>10+dd/my*(H-30);
-  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block" role="img" aria-label="Perfil de la inmersión planificada">`;
+  let svg=`<div id="pl-gw" style="position:relative;max-width:${W}px"><svg id="pl-svg" viewBox="0 0 ${W} ${H}" style="width:100%;display:block;touch-action:pan-y;cursor:crosshair" role="img" aria-label="Perfil de la inmersión planificada">`;
   for(let k=0;k<=my;k+=my>30?10:5)svg+=`<line x1="30" x2="${W-10}" y1="${Y(k)}" y2="${Y(k)}" stroke="#ccd" stroke-width="0.5"/><text x="26" y="${Y(k)+4}" font-size="10" text-anchor="end" fill="#678">${k}</text>`;
   for(let k=0;k<=mx;k+=mx>60?20:10)svg+=`<text x="${X(k)}" y="${H-4}" font-size="10" text-anchor="middle" fill="#678">${k}′</text>`;
   R.segs.forEach(s=>svg+=`<line x1="${X(s.t0)}" y1="${Y(s.d0)}" x2="${X(s.t1)}" y2="${Y(s.d1)}" stroke="${COL[s.g%COL.length]}" stroke-width="3" stroke-linecap="round"/>`);
   R.ev.forEach(e=>svg+=`<circle cx="${X(e.rt)}" cy="${Y(e.d)}" r="4" fill="#fff" stroke="#0E2A3A" stroke-width="1.5"/>`);
-  svg+=`</svg><p class="note">${R.C.map((c,i)=>`<span style="color:${COL[i%COL.length]}">■</span> ${esc(cyName(c))}`).join(" · ")} · ○ cambio de gas</p>`;
+  svg+=`<line id="pl-cur" x1="0" x2="0" y1="10" y2="${H-20}" stroke="#0E2A3A" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/><circle id="pl-dot" r="5" fill="#fff" stroke="#0E2A3A" stroke-width="2" visibility="hidden"/></svg><div id="pl-tip" style="position:absolute;top:4px;display:none;background:var(--paper,#fff);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.35;box-shadow:0 2px 8px rgba(0,0,0,.15);pointer-events:none;white-space:nowrap;z-index:2"></div></div><p class="note">Toca o pasa el cursor por la gráfica para ver los datos de cada momento.</p><p class="note">${R.C.map((c,i)=>`<span style="color:${COL[i%COL.length]}">■</span> ${esc(cyName(c))}`).join(" · ")} · ○ cambio de gas</p>`;
   // tabla de la inmersión: niveles, cambios y paradas
   // botella en uso y su presión en cada momento de la tabla
   const enT=t=>{let s=null;for(const x of R.samp){if(x.t<=t+1e-6)s=x;else break}return s};
@@ -1405,6 +1405,15 @@ function planRender(){
   const tb=R.tFondo-(PL.lv[0]?(+PL.lv[0].d||0)/PL.vd:0);
   const rd=fondo&&fondo.he>0&&e50&&avg>=39&&avg<=51&&tb<=30?`Ratio Deco 1:1 (trimix + EAN50, media ${Math.round(avg)} m): deco ≈ ${Math.round(tb)} min de fondo → ~${Math.round(tb)} min de paradas, frente a ${R.deco} min de Bühlmann.`:`Ratio Deco: no se aplica a este plan (solo está definido para fondo con trimix 21/35–18/45, deco con EAN50/O₂ y profundidad media de 39 a 51 m, hasta 30 min).`;
   out.innerHTML=kpi+svg+(W2.length?`<p class="pl-warn">⚠️ ${W2.map(esc).join("<br>⚠️ ")}</p>`:"")+(R.stops.length?"":`<p class="pl-ok">Sin paradas obligatorias: haz tu parada de seguridad.</p>`)+`<h3 class="pl-h">La inmersión minuto a minuto</h3><div style="overflow-x:auto">${tab}</div><h3 class="pl-h">Gas por botella <span class="note">(${PL.sac} L/min × presión × tiempo)</span></h3><div style="overflow-x:auto">${gas}</div>${alt}<p class="note">${rd}</p><p class="note">GF ${PL.gfl}/${PL.gfh} · bajada ${PL.vd} m/min · subida ${PL.va} m/min · ppO₂ ${PL.ppb}/${PL.ppd} · agua salada.</p>`;
+  // datos de cada momento al tocar o pasar el cursor por la gráfica
+  {const sv=$("pl-svg");if(sv){const tip=$("pl-tip"),cl=$("pl-cur"),dt=$("pl-dot"),S=R.samp;
+    const ver=e=>{const r=sv.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*W;const t=Math.max(0,Math.min(mx,(vx-30)/(W-40)*mx));
+      let lo=0,hi=S.length-1;while(lo<hi){const m=(lo+hi)>>1;if(S[m].t<t)lo=m+1;else hi=m}const p=S[lo];if(!p)return;
+      cl.setAttribute("x1",X(p.t));cl.setAttribute("x2",X(p.t));cl.setAttribute("visibility","visible");dt.setAttribute("cx",X(p.t));dt.setAttribute("cy",Y(p.d));dt.setAttribute("visibility","visible");dt.setAttribute("stroke",COL[p.g%COL.length]);
+      const c=R.C[p.g];tip.innerHTML=`<b>${fmin(p.t)} min · ${p.d.toFixed(1).replace(".",",")} m</b><br><span style="color:${COL[p.g%COL.length]}">■</span> ${esc(cyName(c))}<br>Presión: <b>${Math.max(0,Math.round(p.b))} bar</b> · ppO₂ ${p.pp.toFixed(2).replace(".",",")}${(()=>{const f=R.first,gf=p.t<=R.tFondo+1e-6||!f?R.gfl:R.gfh+(R.gfl-R.gfh)*Math.min(p.d,f)/f,ce=tisCeil(p.T,gf);return ce>0.5?`<br>Techo de deco: ${(Math.ceil(ce*10)/10).toFixed(1).replace(".",",")} m`:"<br>Sin deco obligatoria"})()}`;
+      tip.style.display="block";const px=(e.clientX-r.left),tw=tip.offsetWidth;tip.style.left=Math.max(0,Math.min(r.width-tw,px+12>r.width-tw?px-tw-12:px+12))+"px"};
+    const fuera=()=>{tip.style.display="none";cl.setAttribute("visibility","hidden");dt.setAttribute("visibility","hidden")};
+    sv.addEventListener("pointermove",ver);sv.addEventListener("pointerdown",ver);sv.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")fuera()})}}
 }
 function planForms(){
   const lv=$("pl-lv"),cy=$("pl-cy");if(!lv)return;
