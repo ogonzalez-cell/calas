@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06o"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06p"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1067,12 +1067,12 @@ function corr3D(){if(!V3)return;const {T,sc,X,size,d}=V3;if(V3.pts){sc.remove(V3
   lv.forEach((x,k)=>{const y=-x.dep*X,col=C3(x.kn),edge=new T.Color(0.08,0.14,0.17);
     const pl=new T.Mesh(new T.PlaneGeometry(size,size),new T.MeshBasicMaterial({color:col,transparent:true,opacity:k%2?0.10:0.16,side:T.DoubleSide,depthWrite:false}));pl.rotation.x=-Math.PI/2;pl.position.y=y;pl.renderOrder=6;lab.add(pl);
     const bd=new T.LineSegments(new T.EdgesGeometry(new T.PlaneGeometry(size,size)),new T.LineBasicMaterial({color:edge,transparent:true,opacity:0.55,depthTest:false}));bd.rotation.x=-Math.PI/2;bd.position.y=y;bd.renderOrder=7;lab.add(bd);
-    const L=size*(0.10+Math.min(x.kn,1)*0.28),dir=new T.Vector3(x.u,0,-x.v);if(dir.length()<1e-6)dir.set(1,0,0);dir.normalize();
-    const ar=new T.Group(),r=size*0.009,mat=new T.MeshBasicMaterial({color:col.clone().lerp(new T.Color(0.75,0.15,0.1),0.35),depthTest:false});
+    const L=size*(0.06+Math.min(x.kn,1)*0.18),dir=new T.Vector3(x.u,0,-x.v);if(dir.length()<1e-6)dir.set(1,0,0);dir.normalize();
+    const ar=new T.Group(),r=size*0.0045,mat=new T.MeshBasicMaterial({color:col.clone().lerp(new T.Color(0.75,0.15,0.1),0.35),depthTest:false});
     const sh=new T.Mesh(new T.CylinderGeometry(r,r,L*0.72,10),mat);sh.position.y=L*0.36;const hd=new T.Mesh(new T.ConeGeometry(r*3,L*0.28,14),mat);hd.position.y=L*0.86;ar.add(sh);ar.add(hd);
     const vd=V3.vd?V3.vd():[0,-1],fx=vd[0],fz=vd[1],lx=-fz,lz=fx; /* delante (hacia la cámara) y a la izquierda */
-    ar.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir);ar.position.set(fx*size*0.46+lx*size*0.22-dir.x*L/2,y,fz*size*0.46+lz*size*0.22-dir.z*L/2);ar.children.forEach(m=>m.renderOrder=9);lab.add(ar);
-    const l=V3.label(`${Math.round(x.dep)} m · ${x.kn.toFixed(1).replace(".",",")} kn → ${RUMB(x.d)}`,"#14232B");l.scale.multiplyScalar(0.8);l.position.set(fx*size*0.5+lx*size*0.5,y+size*0.012,fz*size*0.5+lz*size*0.5);lab.add(l)});
+    ar.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir);ar.position.set(fx*size*0.44+lx*size*0.30-dir.x*L/2,y,fz*size*0.44+lz*size*0.30-dir.z*L/2);ar.children.forEach(m=>m.renderOrder=9);lab.add(ar);
+    const l=V3.label(`${Math.round(x.dep)} m · ${x.kn.toFixed(1).replace(".",",")} kn → ${RUMB(x.d)}`,"#14232B");l.scale.multiplyScalar(0.62);l.position.set(fx*size*0.44-lx*size*0.30,y+size*0.012,fz*size*0.44-lz*size*0.30); /* etiqueta delante a la derecha, flecha delante a la izquierda */lab.add(l)});
   sc.add(lab);V3.ptsLab=lab;
   // estratos: las partículas se agrupan en capas finas a las profundidades del modelo, cada capa con su corriente
   for(let i=0;i<N;i++){const L0=lv[i%lv.length],dep=Math.max(1,Math.min(bot,L0.dep+(Math.random()-0.5)*1.4)),c=at(dep),kn=Math.hypot(c.u,c.v)*1.944,rgb=corrCol(kn).match(/\d+/g).map(Number);pos[i*3]=(Math.random()-0.5)*size;pos[i*3+1]=-dep*X;pos[i*3+2]=(Math.random()-0.5)*size;vel[i*2]=c.u*K;vel[i*2+1]=-c.v*K;col.set([rgb[0]/255,rgb[1]/255,rgb[2]/255],i*3)}
