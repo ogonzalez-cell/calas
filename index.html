@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06l"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06m"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1023,7 +1023,9 @@ function corrGet(id,localIso){const c=CORR[id];if(!c)return null;if(!CORR_D[id])
 const SC_C=[[0,[255,255,255]],[0.25,[250,212,205]],[0.5,[236,136,118]],[0.8,[198,52,42]]],corrCol=kn=>wSc(kn,SC_C),RUMB=d=>["N","NE","E","SE","S","SO","O","NO"][Math.round(d/45)%8];
 // ---------- temperatura del agua por profundidad: Copernicus MEDSEA 3D (thetao), una muestra al día (12 UTC) ----------
 const T_SUP="-1.0182366371154785";
-const TEMP_LV={ullastres:[T_SUP,"-19.398210525512695","-29.885643005371094","-42.14503860473633"],boreas:[T_SUP,"-16.270586013793945","-29.885643005371094"]},TEMP_LV_DEF=[T_SUP,"-10.536603927612305","-19.398210525512695"];
+// profundidad de referencia del fondo de cada punto: Tossa 20 m · Sant Feliu, Sa Tuna y Boreas 30 m · Ullastres 50 m
+const L10="-10.536603927612305",L20="-19.398210525512695",L30="-29.885643005371094";
+const TEMP_LV={tossa:[T_SUP,L10,L20],sfg:[T_SUP,L10,L20,L30],begur:[T_SUP,L10,L20,L30],boreas:[T_SUP,"-16.270586013793945",L30],ullastres:[T_SUP,L20,L30,"-42.14503860473633","-51.379859924316406"]},TEMP_LV_DEF=[T_SUP,L10,L20];
 const tempLv=id=>TEMP_LV[id]||TEMP_LV_DEF,TEMP_D={},TEMP_ING={},TEMP_TRY={};
 const tSlot=iso=>iso.slice(0,10)+"T12:00:00Z";
 function tempUrl(q,e,t){const z=7,td=360/Math.pow(2,z+1),cx=(q[1]+180)/td,cy=(90-q[0])/td,col=Math.floor(cx),row=Math.floor(cy),I=Math.floor((cx-col)*256),J=Math.floor((cy-row)*256);
@@ -1033,19 +1035,21 @@ const tVal=async u=>{try{const x=await (await fetch(u)).json();const v=x.feature
 async function tempCell(p){if(CORR[p.id])return CORR[p.id].q;const k="calas4-tcell-"+p.id;try{const c=JSON.parse(localStorage.getItem(k)||"null");if(c&&Math.abs(c.lat-p.lat)<1e-6&&Math.abs(c.lon-p.lon)<1e-6)return c.q}catch(e){}
   const off=pt2(p.orient||135,0.02),t=tSlot(new Date().toISOString());
   for(const m of [1,2,3,4,5]){const q=[+(p.lat+m*off[0]).toFixed(3),+(p.lon+m*off[1]).toFixed(3)];if(await tVal(tempUrl(q,T_SUP,t))!=null){try{localStorage.setItem(k,JSON.stringify({lat:p.lat,lon:p.lon,q}))}catch(e){}return q}}return null}
-async function tempLoad(id,times){const p=PUNTOS.find(x=>x.id===id);if(!p||TEMP_ING[id])return false;TEMP_ING[id]=1;const key="calas4-temp-"+id;let st={};try{st=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
+async function tempLoad(id,times){const p=PUNTOS.find(x=>x.id===id);if(!p||TEMP_ING[id])return false;TEMP_ING[id]=1;const key="calas4-temp2-"+id;let st={};try{st=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
   const now=Date.now(),need=[...new Set(times.map(tSlot))].filter(t=>Date.parse(t)<now+9*86400e3&&!(st[t]&&now-st[t].f<12*3600e3)&&!(TEMP_TRY[id+t]>now-30*60e3));let nuevo=0;
   if(need.length){const q=await tempCell(p);if(q){const lv=tempLv(id);need.forEach(t=>TEMP_TRY[id+t]=now);
     const jobs=[];need.forEach(t=>lv.forEach((e,k)=>jobs.push({t,k,e})));const res={};
     for(let i=0;i<jobs.length;i+=12)await Promise.all(jobs.slice(i,i+12).map(async j=>{(res[j.t]=res[j.t]||[])[j.k]=await tVal(tempUrl(q,j.e,j.t))}));
     need.forEach(t=>{const L=lv.map((e,k)=>res[t]&&res[t][k]!=null?+res[t][k].toFixed(2):null);if(L.some(v=>v!=null)){st[t]={f:now,L};nuevo++}})}}
   Object.keys(st).forEach(t=>{if(Date.parse(t)<now-2*86400e3)delete st[t]});try{localStorage.setItem(key,JSON.stringify(st))}catch(e){}TEMP_D[id]=st;TEMP_ING[id]=0;return nuevo>0}
-function tempGet(id,iso){if(!TEMP_D[id]){try{TEMP_D[id]=JSON.parse(localStorage.getItem("calas4-temp-"+id)||"{}")}catch(e){TEMP_D[id]={}}}
-  const k=TEMP_D[id][tSlot(iso)];if(!k)return null;const lv=tempLv(id).map((e,i)=>k.L[i]!=null?{dep:Math.round(-e),t:k.L[i]}:null).filter(Boolean);if(!lv.length)return null;
-  return {lv,sup:lv[0].dep<=2?lv[0].t:null,fondo:lv[lv.length-1].t,depF:lv[lv.length-1].dep}}
+function tempGet(id,iso){if(!TEMP_D[id]){try{TEMP_D[id]=JSON.parse(localStorage.getItem("calas4-temp2-"+id)||"{}")}catch(e){TEMP_D[id]={}}}
+  const want=tSlot(iso);let sl=want,k=TEMP_D[id][want];
+  if(!k){/* el modelo solo prevé 3-4 días: más allá se usa el último día con dato (la temperatura cambia despacio) */const prev=Object.keys(TEMP_D[id]).filter(t=>t<want&&Date.parse(want)-Date.parse(t)<=5*86400e3).sort().pop();if(prev){sl=prev;k=TEMP_D[id][prev]}}
+  if(!k)return null;const lv=tempLv(id).map((e,i)=>k.L[i]!=null?{dep:-e<2?1:Math.round(-e/5)*5,t:k.L[i]}:null).filter(Boolean);if(!lv.length)return null;
+  return {lv,sup:lv[0].dep<=2?lv[0].t:null,fondo:lv[lv.length-1].t,depF:lv[lv.length-1].dep,aprox:sl!==want?sl.slice(0,10):null}}
 const fC=v=>v.toFixed(1).replace(".",",");
 function tempTxt(id,iso){const o=tempGet(id,iso);if(!o)return TEMP_ING[id]?`<br>🌡️ <b>Agua por profundidad:</b> cargando el modelo de Copernicus…`:"";
-  let t=`<br>🌡️ <b>Agua</b> (modelo Copernicus, zona de 4 km): `+o.lv.map(x=>x.dep<=2?`${fC(x.t)} °C en superficie`:`${fC(x.t)} °C a ${x.dep} m`).join(" · ")+".";
+  let t=`<br>🌡️ <b>Agua</b> (modelo Copernicus, zona de 4 km${o.aprox?`; el modelo aún no llega a este día, dato del ${o.aprox.slice(8)}/${o.aprox.slice(5,7)}`:""}): `+o.lv.map(x=>x.dep<=2?`${fC(x.t)} °C en superficie`:`${fC(x.t)} °C a ${x.dep} m`).join(" · ")+".";
   let best=null;for(let k=1;k<o.lv.length;k++){const d=o.lv[k-1].t-o.lv[k].t;if(d>=2&&(!best||d>best.d))best={d,a:o.lv[k-1],b:o.lv[k]}}
   if(best)t+=` <b>Termoclina</b> entre ${best.a.dep} y ${best.b.dep} m: de ${fC(best.a.t)} a ${fC(best.b.t)} °C.`;
   const f=o.fondo;t+=` Traje orientativo para ${o.depF} m: ${f>=24?"3 mm":f>=20?"5 mm":f>=16?"7 mm o semiseco":"seco, o 7 mm con capucha y chaleco"}.`;return t}
