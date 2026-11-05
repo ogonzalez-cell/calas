@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06g"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06h"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1307,7 +1307,7 @@ const PL_COL=["#1f6fb2","#d6336c","#e08a1e","#2a9d55","#7d3cb5","#00838f"]; // u
 const CYLT={mono15:["Monobotella 15 L",15,200],mono18:["Monobotella 18 L",18,200],bi10:["Bibotella 2×10 L",20,200],bi12:["Bibotella 2×12 L",24,200],s80:["Stage S80 (11,1 L)",11.1,207],s40:["Stage S40 (5,7 L)",5.7,207],otra:["Otra",10,200]};
 const PL_DEF={gfl:30,gfh:85,agfl:50,agfh:90,vd:18,va:9,last:3,ppb:1.4,ppd:1.6,sac:20,res:"tercios",resf:50,agua:"salada",tcam:0,
   lv:[{d:40,t:25}],
-  cy:[{tipo:"bi12",v:24,p:200,o2:21,he:0,rol:"fondo",lim:0,cambio:0,baja:0},{tipo:"s80",v:11.1,p:207,o2:21,he:0,rol:"stage",lim:40,cambio:0,baja:0},{tipo:"s80",v:11.1,p:207,o2:50,he:0,rol:"deco",lim:0,cambio:0,baja:21}]};
+  cy:[{tipo:"bi12",v:24,p:200,o2:21,he:0,rol:"fondo",lim:0,cambio:0,baja:0},{tipo:"s80",v:11.1,p:207,o2:21,he:0,rol:"stage",lim:40,cambio:0,baja:0},{tipo:"s80",v:11.1,p:207,o2:50,he:0,rol:"deco",lim:0,cambio:0,baja:1}]};
 let PL=(()=>{try{const s=store.get("calas4-plan",null);return s&&s.cy&&s.lv?{...PL_DEF,...s}:JSON.parse(JSON.stringify(PL_DEF))}catch(e){return JSON.parse(JSON.stringify(PL_DEF))}})();
 const gasName=c=>c.he>0?`Trimix ${c.o2}/${c.he}`:c.o2===21?"Aire":c.o2>=99?"Oxígeno":`EAN${c.o2}`;
 const cyName=(c,i)=>`${CYLT[c.tipo]?CYLT[c.tipo][0].replace(/ \(.*\)/,""):"Botella"} ${gasName(c)}`;
@@ -1324,7 +1324,7 @@ function planCalc(P,gfl,gfh){
   const bar=i=>C[i].p-C[i].used/C[i].v;
   const backGas=()=>{for(let i=0;i<C.length;i++)if(C[i].rol==="stage"&&bar(i)>C[i].lim+0.05)return i;let f=C.findIndex(c=>c.rol==="fondo");if(f<0)f=C.findIndex(c=>c.rol!=="deco");return f<0?0:f};
   function pick(dep,fase){
-    if(fase==="baja0"){const b=C.findIndex(c=>c.baja>0&&dep<c.baja-1e-6);if(b>=0)return b}
+    if(fase==="baja0"){const b=C.findIndex(c=>c.baja&&dep<cambioDe(c,P)-1e-6);/* «la uso en la bajada»: hasta su profundidad de cambio (EAN50 → 21 m) */if(b>=0)return b}
     if(fase==="deco"){let best=-1;C.forEach((c,i)=>{if(c.rol==="deco"&&dep<=cambioDe(c,P)+1e-6&&(best<0||c.o2>C[best].o2))best=i});if(best>=0)return best}
     return backGas()}
   function step(d0,d1,t,fase){if(t<=1e-9)return;const n=Math.max(1,Math.ceil(t/0.1)),h=t/n;
@@ -1341,7 +1341,7 @@ function planCalc(P,gfl,gfh){
   let tEnd=0,maxD=0;
   const lvEnd=[];P.lv.forEach((L,i)=>{const D=Math.max(0,+L.d||0);maxD=Math.max(maxD,D);
     if(D<d){const ce=tisCeil(T,gfl);if(ce>D+0.5)warn.add(`No puedes subir al nivel ${i+1} (${D} m): el techo de deco está a ${Math.ceil(ce)} m`)}
-    if(i===0){const bj=Math.max(0,...C.filter(c=>c.baja>0).map(c=>c.baja));if(bj>0&&bj<D){move(0,bj,"baja0");d=bj}} // el cambio del gas de bajada, justo a su profundidad
+    if(i===0){const bj=Math.max(0,...C.filter(c=>c.baja).map(c=>cambioDe(c,P)));if(bj>0&&bj<D){move(0,bj,"baja0");d=bj}} // el cambio del gas de bajada, justo a su profundidad
     move(d,D,i===0?"baja0":"fondo");d=D;
     if(i===0&&rt>(+L.t||0)+0.05)warn.add(`El primer nivel es más corto que la bajada (${rt.toFixed(1)} min)`);
     // como Deco Planner: el primer nivel cuenta desde que empiezas a bajar; los demás son minutos EN ese nivel, sin el desplazamiento
@@ -1414,7 +1414,7 @@ function planForms(){
     <label>O₂ %<input class="w1" type="number" min="5" max="100" data-cy="${i}" data-k="o2" value="${c.o2}"></label><label>He %<input class="w1" type="number" min="0" max="95" data-cy="${i}" data-k="he" value="${c.he}"></label>
     <label>Uso<select class="w3" data-cy="${i}" data-k="rol"><option value="fondo"${c.rol==="fondo"?" selected":""}>Fondo</option><option value="stage"${c.rol==="stage"?" selected":""}>Stage (se usa primero)</option><option value="deco"${c.rol==="deco"?" selected":""}>Deco</option></select></label>
     ${c.rol==="stage"?`<label>Dejarla a (bar)<input class="w1" type="number" data-cy="${i}" data-k="lim" value="${c.lim}"></label>`:""}
-    ${c.rol==="deco"?`<label>Cambio a (m)<input class="w1" type="number" data-cy="${i}" data-k="cambio" value="${c.cambio||""}" placeholder="${Math.floor(modDe(c,PL.ppd)/3)*3}"></label><label>Bajar con ella hasta (m)<input class="w1" type="number" data-cy="${i}" data-k="baja" value="${c.baja||""}" placeholder="no"></label>`:""}
+    ${c.rol==="deco"?`<label>Cambio a (m)<input class="w1" type="number" data-cy="${i}" data-k="cambio" value="${c.cambio||""}" placeholder="${Math.floor(modDe(c,PL.ppd)/3)*3}"></label><label style="flex-direction:row;align-items:center;gap:6px;align-self:center;font-size:13px;color:inherit"><input type="checkbox" data-cy="${i}" data-k="baja"${c.baja?" checked":""} style="width:auto"> La uso en la bajada (hasta ${cambioDe(c,PL)} m)</label>`:""}
     <span class="note" style="align-self:center">${gasName(c)} · MOD ${Math.floor(modDe(c,c.rol==="deco"?PL.ppd:PL.ppb))} m</span>${PL.cy.length>1?`<button type="button" class="pl-x" data-dcy="${i}" aria-label="Quitar botella">✕</button>`:""}</div>`).join("");
   ["gfl","gfh","agfl","agfh","vd","va","last","ppb","ppd","sac","res","resf","agua","tcam"].forEach(k=>{const el=$("pl-"+k);if(el)el.value=PL[k]});
 }
@@ -1422,7 +1422,7 @@ function planInit(){
   if(!$("pPlan"))return;planForms();
   $("pPlan").addEventListener("change",e=>{const t=e.target;
     if(t.dataset.lv!=null){PL.lv[+t.dataset.lv][t.dataset.k]=+t.value}
-    else if(t.dataset.cy!=null){const c=PL.cy[+t.dataset.cy],k=t.dataset.k;if(k==="tipo"||k==="rol"){c[k]=t.value;if(k==="tipo"&&CYLT[t.value]){c.v=CYLT[t.value][1];c.p=CYLT[t.value][2]}if(k==="rol"&&t.value==="stage"&&!c.lim)c.lim=40}else c[k]=+t.value||0;planForms()}
+    else if(t.dataset.cy!=null){const c=PL.cy[+t.dataset.cy],k=t.dataset.k;if(k==="tipo"||k==="rol"){c[k]=t.value;if(k==="tipo"&&CYLT[t.value]){c.v=CYLT[t.value][1];c.p=CYLT[t.value][2]}if(k==="rol"&&t.value==="stage"&&!c.lim)c.lim=40}else if(t.type==="checkbox")c[k]=t.checked?1:0;else c[k]=+t.value||0;planForms()}
     else if(t.id&&t.id.startsWith("pl-")){const k=t.id.slice(3);if(k in PL)PL[k]=k==="res"||k==="agua"?t.value:+t.value;planForms()}
     planRender()});
   $("pPlan").addEventListener("click",e=>{const t=e.target;
