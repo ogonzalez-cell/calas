@@ -171,7 +171,9 @@ th.tarde{color:var(--posidonia)}
 .pl-row .w1{width:72px}.pl-row .w2{width:150px}.pl-row .w3{width:110px}
 .pl-x{background:none;border:0;color:var(--stop,#c0392b);font-size:18px;cursor:pointer;padding:4px 6px}
 .pl-tab{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0}
-.pl-tab th,.pl-tab td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;white-space:nowrap}
+.pl-tab th,.pl-tab td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;white-space:normal;vertical-align:top;overflow-wrap:anywhere}
+.pl-tab td:first-child,.pl-tab th:first-child{white-space:nowrap;width:1%}
+@media (max-width:640px){.pl-min tr{display:grid;grid-template-columns:auto 1fr;column-gap:8px}.pl-min td:nth-child(3),.pl-min th:nth-child(3){grid-column:2;border-bottom:0;padding-top:0;color:var(--muted,#5b6b74)}.pl-min td:nth-child(2),.pl-min th:nth-child(2){border-bottom:0}.pl-min tr{border-bottom:1px solid var(--line)}.pl-min th:nth-child(3){display:none}}
 .pl-ev{background:rgba(14,42,58,.06)}
 .pl-warn{color:var(--stop,#c0392b);font-weight:600}
 .pl-ok{color:var(--go,#1f8a55);font-weight:600}
@@ -332,7 +334,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06t"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06u"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1449,7 +1451,7 @@ function planRender(){
   if(RET&&RET.s)rows.push({rt:RET.s.t,txt:`<b style="color:${RET.antes?"#c0392b":"#1f8a55"}">↩ Presión de retorno de la ${esc(cyName(R.C[rs.i]))}: ${RET.txt}${RET.antes?" · ⚠️ la alcanzas aquí, antes de terminar el fondo: empieza a subir o acorta el fondo":` · ✓ empiezas a subir con ${Math.round(RET.bF)} bar`}</b>`,ev:1,bo:pr(rs.i,RET.s.b)});
   R.stops.forEach(s=>rows.push({rt:s.rt,txt:`Parada ${s.d} m · <b>${s.m} min</b> · ${esc(gasName(R.C[s.g]))}`,bo:`${esc(cyName(R.C[s.g]))} · ${Math.round(s.bI)} → <b>${Math.max(0,Math.round(s.bF))} bar</b>`}));
   {const s=enT(R.rt);rows.push({rt:R.rt,txt:"Superficie",bo:s?pr(s.g,s.b):""})}rows.sort((a,b)=>a.rt-b.rt);
-  const tab=`<table class="pl-tab"><tr><th>Minuto</th><th>Qué</th><th>Botella en uso · presión</th></tr>${rows.map(r=>`<tr${r.ev?' class="pl-ev"':""}><td>${fmin(r.rt)}</td><td>${r.txt}</td><td>${r.bo||""}</td></tr>`).join("")}</table>`;
+  const tab=`<table class="pl-tab pl-min"><tr><th>Minuto</th><th>Qué</th><th>Botella en uso · presión</th></tr>${rows.map(r=>`<tr${r.ev?' class="pl-ev"':""}><td>${fmin(r.rt)}</td><td>${r.txt}</td><td>${r.bo||""}</td></tr>`).join("")}</table>`;
   // gas por botella
   const gas=`<table class="pl-tab"><tr><th>Botella</th><th>Usado</th><th>Presión</th><th>Margen</th></tr>${R.C.map((c,i)=>{const fin=c.p-c.used/c.v;let lim=0,lt="";
       if(c.rol==="stage"){lim=c.lim;lt=`dejar a ${c.lim} bar`}else if(c.rol==="deco"){lim=+PL.resf||50;lt=`llegar a superficie con ${lim} bar`}else if(rs&&rs.i===i){lim=rs.bar;lt=`reserva ${Math.round(rs.bar)} bar (${rs.txt})`}
