@@ -332,7 +332,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-06q"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-06r"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -1419,6 +1419,9 @@ function planRender(){
   const out=$("pl-out");if(!out)return;let R;try{R=planCalc(PL,PL.gfl/100,PL.gfh/100)}catch(e){out.innerHTML=`<p class="pl-warn">Error en el cálculo: ${esc(e.message)}</p>`;return}
   let A=null;try{A=planCalc(PL,PL.agfl/100,PL.agfh/100)}catch(e){}
   const rs=reservaFondo(PL,R),COL=PL_COL;
+  // punto de retorno: cuando la botella de fondo llega a su presión de retorno (tercios: usado 1/3; rock bottom o mínimo: la reserva)
+  let RET=null;if(rs){const c=R.C[rs.i],tp=PL.res==="tercios"?c.p*2/3:rs.bar,s0=R.samp.find(x=>x.g===rs.i&&x.b<=tp+1e-6);
+    RET={tp,txt:PL.res==="tercios"?"tercios":PL.res==="rb"?"rock bottom":"presión mínima",s:s0||null,antes:s0?s0.t<R.tFondo-0.05:false}}
   // profundidad media: del fondo (desde que empiezas a bajar hasta que empieza la subida final) y de toda la inmersión
   const pmed=(t1)=>{let a=0,t=0;R.segs.forEach(x=>{const b=Math.min(x.t1,t1);if(b>x.t0){const f=(b-x.t0)/(x.t1-x.t0),dB=x.d0+(x.d1-x.d0)*f;a+=(b-x.t0)*(x.d0+dB)/2;t+=b-x.t0}});return t>0?a/t:0};
   const pmF=pmed(R.tFondo),pmT=pmed(R.rt);R.pmF=pmF;R.pmT=pmT;
@@ -1429,14 +1432,18 @@ function planRender(){
   for(let k=0;k<=my;k+=my>30?10:5)svg+=`<line x1="30" x2="${W-10}" y1="${Y(k)}" y2="${Y(k)}" stroke="#ccd" stroke-width="0.5"/><text x="26" y="${Y(k)+4}" font-size="10" text-anchor="end" fill="#678">${k}</text>`;
   for(let k=0;k<=mx;k+=mx>60?20:10)svg+=`<text x="${X(k)}" y="${H-4}" font-size="10" text-anchor="middle" fill="#678">${k}′</text>`;
   R.segs.forEach(s=>svg+=`<line x1="${X(s.t0)}" y1="${Y(s.d0)}" x2="${X(s.t1)}" y2="${Y(s.d1)}" stroke="${COL[s.g%COL.length]}" stroke-width="3" stroke-linecap="round"/>`);
-  R.ev.forEach(e=>svg+=`<circle cx="${X(e.rt)}" cy="${Y(e.d)}" r="4" fill="#fff" stroke="#0E2A3A" stroke-width="1.5"/>`);
-  svg+=`<line id="pl-cur" x1="0" x2="0" y1="10" y2="${H-20}" stroke="#0E2A3A" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/><circle id="pl-dot" r="5" fill="#fff" stroke="#0E2A3A" stroke-width="2" visibility="hidden"/></svg></div><div id="pl-tip" class="note" style="margin-top:6px;min-height:5.2em;background:var(--paper,#fff);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;line-height:1.4">Toca o pasa el cursor por la gráfica para ver los datos de cada momento.</div><p class="note">${R.C.map((c,i)=>`<span style="color:${COL[i%COL.length]}">■</span> ${esc(cyName(c))}`).join(" · ")} · ○ cambio de gas</p>`;
+  R.ev.forEach((e,k)=>{const cx=X(e.rt),cy=Y(e.d),col=COL[e.g%COL.length],nm=({mono15:"Mono 15",mono18:"Mono 18",bi10:"Bibo 2×10",bi12:"Bibo 2×12",s80:"S80",s40:"S40"}[R.C[e.g].tipo]||"Botella")+" "+gasName(R.C[e.g]),up=cy>40;
+    svg+=`<line x1="${cx}" x2="${cx}" y1="${cy}" y2="${up?cy-16:cy+16}" stroke="${col}" stroke-width="1.5"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="#fff" stroke="${col}" stroke-width="2.5"/><text x="${cx+3}" y="${up?cy-19:cy+26}" font-size="10" font-weight="700" fill="${col}" text-anchor="${cx>W-80?"end":"start"}" paint-order="stroke" stroke="#fff" stroke-width="3">⇄ ${esc(nm)}</text>`});
+  if(RET&&RET.s){const cx=X(RET.s.t),cy=Y(RET.s.d),col=RET.antes?"#c0392b":"#e08a1e";
+    svg+=`<line x1="${cx}" x2="${cx}" y1="10" y2="${H-20}" stroke="${col}" stroke-width="1.5" stroke-dasharray="5 3"/><path d="M${cx-6},${cy+9} L${cx+6},${cy+9} L${cx},${cy-2} Z" fill="${col}"/><text x="${cx>W-90?cx-4:cx+4}" y="22" font-size="10" font-weight="700" fill="${col}" text-anchor="${cx>W-90?"end":"start"}" paint-order="stroke" stroke="#fff" stroke-width="3">↩ Retorno (${RET.txt})</text>`}
+  svg+=`<line id="pl-cur" x1="0" x2="0" y1="10" y2="${H-20}" stroke="#0E2A3A" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/><circle id="pl-dot" r="5" fill="#fff" stroke="#0E2A3A" stroke-width="2" visibility="hidden"/></svg></div><div id="pl-tip" class="note" style="margin-top:6px;min-height:5.2em;background:var(--paper,#fff);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;line-height:1.4">Toca o pasa el cursor por la gráfica para ver los datos de cada momento.</div><p class="note">${R.C.map((c,i)=>`<span style="color:${COL[i%COL.length]}">■</span> ${esc(cyName(c))}`).join(" · ")} · ⇄ cambio de gas · ↩ punto de retorno</p>`;
   // tabla de la inmersión: niveles, cambios y paradas
   // botella en uso y su presión en cada momento de la tabla
   const enT=t=>{let s=null;for(const x of R.samp){if(x.t<=t+1e-6)s=x;else break}return s};
   const pr=(g,b)=>`${esc(cyName(R.C[g]))} · <b>${Math.max(0,Math.round(b))} bar</b>`;
   const rows=[];PL.lv.forEach((L,i)=>{const tAcc=R.lvEnd[i]??0;const s=enT(tAcc);rows.push({rt:tAcc,txt:`Fin del nivel ${i+1}: ${L.d} m`,bo:s?pr(s.g,s.b):""})});
   R.ev.forEach(e=>rows.push({rt:e.rt,txt:`🔄 ${e.txt} (a ${Math.round(e.d)} m)`,ev:1,bo:`${Math.max(0,Math.round(e.pf))} bar → ${pr(e.g,e.pt)}`}));
+  if(RET&&RET.s)rows.push({rt:RET.s.t,txt:`<b style="color:${RET.antes?"#c0392b":"#e08a1e"}">↩ Punto de retorno (${RET.txt}): ${Math.round(RET.tp)} bar en la ${esc(cyName(R.C[rs.i]))}${RET.antes?" · ⚠️ llega antes de empezar la subida: acorta el fondo":" · ya en la subida"}</b>`,ev:1,bo:pr(rs.i,RET.s.b)});
   R.stops.forEach(s=>rows.push({rt:s.rt,txt:`Parada ${s.d} m · <b>${s.m} min</b> · ${esc(gasName(R.C[s.g]))}`,bo:`${esc(cyName(R.C[s.g]))} · ${Math.round(s.bI)} → <b>${Math.max(0,Math.round(s.bF))} bar</b>`}));
   {const s=enT(R.rt);rows.push({rt:R.rt,txt:"Superficie",bo:s?pr(s.g,s.b):""})}rows.sort((a,b)=>a.rt-b.rt);
   const tab=`<table class="pl-tab"><tr><th>Minuto</th><th>Qué</th><th>Botella en uso · presión</th></tr>${rows.map(r=>`<tr${r.ev?' class="pl-ev"':""}><td>${fmin(r.rt)}</td><td>${r.txt}</td><td>${r.bo||""}</td></tr>`).join("")}</table>`;
