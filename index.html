@@ -334,7 +334,7 @@ body.plan main,body.plan header .sub{display:none!important}
   </section>
 </div>
 <script>
-const APP_VERSION="2026-11-20a"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
+const APP_VERSION="2026-11-20b"; // súbelo en cada cambio: los dispositivos con una versión anterior se recargan solos
 const HOURS=[7,8,9,10,11,12,13,16,20];
 const WAVE_MODELS=[["ecmwf_wam025","ECMWF"],["meteofrance_wave","Météo-France"],["ewam","DWD Europa"],["gwam","DWD global"],["ncep_gfswave025","NOAA GFS"]];
 const WIND_MODELS=[["ecmwf_ifs025","ECMWF"],["meteofrance_arome_france_hd","AROME 1,3 km"],["icon_eu","ICON-EU"],["meteofrance_arpege_europe","ARPEGE"],["gfs_seamless","GFS"]];
@@ -876,7 +876,7 @@ async function grid3dLive(d,id){const key="calas4-g3d-"+id+"-"+d.c.join()+"-"+d.
 // ---------- webcams más cercanas y representativas de cada punto ----------
 const WEBCAMS={
   sfg:[{n:"Port Salvi en directo",img:"https://cnsfg.cat/wp-admin/admin-ajax.php?action=camara_cnsfg_stream",u:"https://cnsfg.cat/meteo-webcam/",d:"Club Nàutic Sant Feliu, en el puerto",cr:"Club Nàutic Sant Feliu de Guíxols"}],
-  tossa:[{n:"Mar Menuda en directo",emb:"https://g0.ipcamlive.com/player/player.php?alias=645df42b35714",u:"https://www.hotelreymartossa.com/es/webcam-tossa-de-mar",d:"Gran Hotel Reymar, frente a la playa",cr:"Gran Hotel Reymar"},{n:"Tossa 360°",u:"https://www.skylinewebcams.com/webcam/espana/cataluna/gerona/tossa-de-mar.html"}],
+  tossa:[{n:"Mar Menuda en directo",img:"https://g0.ipcamlive.com/player/snapshot.php?alias=645df42b35714",u:"https://www.hotelreymartossa.com/es/webcam-tossa-de-mar",d:"Gran Hotel Reymar, frente a la playa",cr:"Gran Hotel Reymar"},{n:"Tossa 360°",u:"https://www.skylinewebcams.com/webcam/espana/cataluna/gerona/tossa-de-mar.html"}],
   begur:[{n:"Aiguablava en directo",img:"https://images.webcamgalore.com/37353-current-webcam-Aiguablava.jpg",u:"https://www.windfinder.com/webcams/aiguablava",d:"Club Nàutic Aiguablava, 3 km al sur, misma costa",cr:"Club Nàutic Aiguablava (vía webcamgalore)"}],
   blanes:[{n:"Santa Anna en directo",img:"https://images.webcamgalore.com/36949-current-webcam-Blanes.jpg",u:"https://www.windfinder.com/webcams/blanes",d:"Club de Vela Blanes, en la punta",cr:"Club de Vela Blanes (vía webcamgalore)"}],
   vedell:[{n:"Port de Palamós en directo",emb:"https://webcams.windy.com/webcams/public/embed/player/1575445569/day",u:"https://www.windy.com/webcams/1575445569",d:"a ~1 km; con las últimas 24 h",cr:"Windy.com"}],
